@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbearia Score - Agendamento</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; padding: 20px; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 10px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; }
+        button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; }
+        .score-box { background: #27ae60; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 20px; }
+        .horarios { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .hora-btn { background: #333; font-size: 14px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="login-area">
+        <h2>Barbearia - Login</h2>
+        <input type="email" id="email" placeholder="Seu e-mail">
+        <input type="password" id="senha" placeholder="Sua senha">
+        <button onclick="fazerLogin()">Entrar</button>
+        <button style="background:#333" onclick="fazerCadastro()">Criar Conta</button>
+    </div>
+
+    <div id="cliente-area" class="hidden">
+        <div class="score-box">
+            <span>Seu Saldo Fidelidade</span>
+            <h1 id="saldo-display">R$ 0,00</h1>
+            <small id="aviso-resgate">Resgate disponível a partir de R$ 1,00</small>
+        </div>
+
+        <h3>Agendar para Domingo</h3>
+        <select id="servico-select">
+            <option value="social" data-valor="20" data-score="0.05">Social - R$ 20,00</option>
+            <option value="degrade" data-valor="25" data-score="0.07">Degradê - R$ 25,00</option>
+            <option value="luzes" data-valor="60" data-score="0.30">Luzes - R$ 60,00</option>
+            </select>
+
+        <div class="horarios">
+            <button class="hora-btn" onclick="selecionarHora('10:00')">10:00</button>
+            <button class="hora-btn" onclick="selecionarHora('11:20')">11:20</button>
+            <button class="hora-btn" onclick="selecionarHora('12:35')">12:35</button>
+            <button class="hora-btn" onclick="selecionarHora('15:00')">15:00</button>
+            <button class="hora-btn" onclick="selecionarHora('16:30')">16:30</button>
+            <button class="hora-btn" onclick="selecionarHora('17:50')">17:50</button>
+        </div>
+        <p id="info-agendamento"></p>
+        <button id="btn-agendar" onclick="finalizarAgendamento()" class="hidden">Confirmar Agendamento</button>
+    </div>
+</div>
+
+<script>
+    // CONFIGURAÇÃO DO SEU SUPABASE
+    const SUPABASE_URL = "https://vbckjvgefobuwwswlrdk.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_j8gX5czIDTtA3Ex3-zDPsw_n5RUbZoD"; // Chave Anon
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let usuarioLogado = null;
+    let horaSelecionada = "";
+
+    async function fazerLogin() {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: document.getElementById('email').value,
+            password: document.getElementById('senha').value
+        });
+        if (error) alert("Erro: " + error.message);
+        else inicializarPainel(data.user);
+    }
+
+    async function inicializarPainel(user) {
+        usuarioLogado = user;
+        document.getElementById('login-area').classList.add('hidden');
+        document.getElementById('cliente-area').classList.remove('hidden');
+        
+        // Busca o saldo no banco
+        const { data } = await supabase.from('perfis').select('saldo_score').eq('id', user.id).single();
+        if (data) {
+            document.getElementById('saldo-display').innerText = `R$ ${data.saldo_score.toFixed(2)}`;
+            if (data.saldo_score >= 1) document.getElementById('aviso-resgate').innerText = "✅ Resgate Disponível!";
+        }
+    }
+
+    function selecionarHora(hora) {
+        horaSelecionada = hora;
+        document.getElementById('info-agendamento').innerText = "Horário: " + hora + " (Próximo Domingo)";
+        document.getElementById('btn-agendar').classList.remove('hidden');
+    }
+
+    async function finalizarAgendamento() {
+        alert("Agendamento realizado para às " + horaSelecionada + "! O barbeiro confirmará seu score no local.");
+    }
+</script>
+</body>
+</html>
