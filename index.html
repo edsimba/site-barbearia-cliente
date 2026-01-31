@@ -8,55 +8,41 @@
     <style>
         body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
         .container { background: #1e1e1e; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; border: 1px solid #333; }
-        input, button, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; }
+        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; }
         button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; }
         .hidden { display: none !important; }
-        .score-card { background: #1b5e20; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .score-card { background: #1b5e20; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 2px solid #2e7d32; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div id="tela-auth">
         <h2 id="titulo">Entrar</h2>
-        <input type="email" id="email" placeholder="Seu E-mail">
-        <input type="password" id="senha" placeholder="Sua Senha">
-        <button onclick="authAcao()" id="btn-auth">Entrar Agora</button>
-        <p onclick="trocar()" id="link-trocar" style="cursor:pointer; color: #aaa;">Não tem conta? Cadastre-se</p>
+        <input type="email" id="email" placeholder="E-mail">
+        <input type="password" id="senha" placeholder="Senha">
+        <button onclick="authAcao()">Confirmar</button>
+        <p onclick="trocar()" id="link-trocar" style="cursor:pointer; color: #aaa;">Cadastrar-se</p>
     </div>
 
     <div id="tela-cliente" class="hidden">
         <div class="score-card">
-            <p>Seu Saldo</p>
+            <span>Seu Saldo</span>
             <h1 id="saldo">R$ 0,00</h1>
         </div>
-        <h3>Agendar para Domingo</h3>
-        <select id="servico">
-            <option value="Social">Social - R$ 20,00</option>
-            <option value="Degradê">Degradê - R$ 25,00</option>
-            <option value="Luzes">Luzes - R$ 60,00</option>
-        </select>
-        <div id="botoes-hora">
-            <button onclick="agendar('10:00')">10:00</button>
-            <button onclick="agendar('11:20')">11:20</button>
-            <button onclick="agendar('15:00')">15:00</button>
-        </div>
-        <button onclick="location.reload()" style="background:#444; margin-top:20px;">Sair</button>
+        <p>Você será atendido no domingo.</p>
+        <button onclick="location.reload()" style="background:#444">Sair</button>
     </div>
 </div>
 
 <script>
     const URL = "https://vbckjvgefobuwwswlrdk.supabase.co";
     const KEY = "sb_publishable_j8gX5czIDTtA3Ex3-zDPsw_n5RUbZoD";
-    const supabaseClient = supabase.createClient(URL, KEY);
+    const _supabase = supabase.createClient(URL, KEY);
 
     let ehCadastro = false;
-
-    function trocar() {
-        ehCadastro = !ehCadastro;
+    function trocar() { 
+        ehCadastro = !ehCadastro; 
         document.getElementById('titulo').innerText = ehCadastro ? "Criar Conta" : "Entrar";
-        document.getElementById('btn-auth').innerText = ehCadastro ? "Cadastrar" : "Entrar Agora";
-        document.getElementById('link-trocar').innerText = ehCadastro ? "Já tem conta? Entre" : "Não tem conta? Cadastre-se";
     }
 
     async function authAcao() {
@@ -64,37 +50,28 @@
         const senha = document.getElementById('senha').value;
 
         if (ehCadastro) {
-            const { data, error } = await supabaseClient.auth.signUp({ email, password: senha });
+            const { data, error } = await _supabase.auth.signUp({ email, password: senha });
             if (error) return alert("Erro no Cadastro: " + error.message);
-            // Cria o perfil inicial
-            await supabaseClient.from('perfis').insert([{ id: data.user.id, saldo_score: 0 }]);
-            alert("Conta criada! Agora clique em Entrar.");
+            // Cria o perfil na tabela
+            await _supabase.from('perfis').insert([{ id: data.user.id, saldo_score: 0 }]);
+            alert("Conta criada! Agora faça Login.");
             trocar();
         } else {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password: senha });
             if (error) return alert("Erro no Login: " + error.message);
-            abrirPainel(data.user);
+            
+            // FORÇA A TROCA DE TELA
+            document.getElementById('tela-auth').style.display = 'none';
+            document.getElementById('tela-cliente').classList.remove('hidden');
+            
+            buscarSaldo(data.user.id);
         }
     }
 
-    async function abrirPainel(user) {
-        document.getElementById('tela-auth').classList.add('hidden');
-        document.getElementById('tela-cliente').classList.remove('hidden');
-
-        const { data } = await supabaseClient.from('perfis').select('saldo_score').eq('id', user.id).single();
+    async function buscarSaldo(uid) {
+        const { data, error } = await _supabase.from('perfis').select('saldo_score').eq('id', uid).single();
         if (data) document.getElementById('saldo').innerText = `R$ ${data.saldo_score.toFixed(2)}`;
-    }
-
-    async function agendar(hora) {
-        const servico = document.getElementById('servico').value;
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        
-        const { error } = await supabaseClient.from('agendamentos').insert([
-            { cliente_id: user.id, servico: servico, horario: hora }
-        ]);
-
-        if (error) alert("Erro ao agendar: " + error.message);
-        else alert("Agendado com sucesso para às " + hora + "!");
+        else console.log("Erro ao buscar saldo ou perfil não existe.");
     }
 </script>
 </body>
