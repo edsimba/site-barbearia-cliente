@@ -3,33 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barbearia Score</title>
+    <title>Barbearia Score - Oficial</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
-        .container { background: #1e1e1e; padding: 20px; border-radius: 10px; max-width: 400px; margin: auto; border: 1px solid #333; }
-        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; }
+        .box { background: #1e1e1e; padding: 20px; border-radius: 10px; max-width: 350px; margin: auto; border: 1px solid #333; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; }
         button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; }
         .hidden { display: none !important; }
-        .score-card { background: #1b5e20; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 2px solid #2e7d32; }
+        #status { color: #ff5555; font-size: 12px; margin-top: 10px; }
     </style>
 </head>
 <body>
-<div class="container">
-    <div id="tela-auth">
-        <h2 id="titulo">Entrar</h2>
+
+<div class="box">
+    <div id="area-login">
+        <h2>Acessar</h2>
         <input type="email" id="email" placeholder="E-mail">
         <input type="password" id="senha" placeholder="Senha">
-        <button onclick="authAcao()">Confirmar</button>
-        <p onclick="trocar()" id="link-trocar" style="cursor:pointer; color: #aaa;">Cadastrar-se</p>
+        <button onclick="entrar()">Entrar</button>
+        <button onclick="cadastrar()" style="background: #333;">Criar Conta</button>
+        <div id="status"></div>
     </div>
 
-    <div id="tela-cliente" class="hidden">
-        <div class="score-card">
-            <span>Seu Saldo</span>
+    <div id="area-cliente" class="hidden">
+        <div style="background: #1b5e20; padding: 15px; border-radius: 8px;">
+            <p>Saldo Score</p>
             <h1 id="saldo">R$ 0,00</h1>
         </div>
-        <p>Você será atendido no domingo.</p>
+        <p>Atendimento aos Domingos</p>
         <button onclick="location.reload()" style="background:#444">Sair</button>
     </div>
 </div>
@@ -37,41 +39,44 @@
 <script>
     const URL = "https://vbckjvgefobuwwswlrdk.supabase.co";
     const KEY = "sb_publishable_j8gX5czIDTtA3Ex3-zDPsw_n5RUbZoD";
-    const _supabase = supabase.createClient(URL, KEY);
+    const supabaseClient = supabase.createClient(URL, KEY);
 
-    let ehCadastro = false;
-    function trocar() { 
-        ehCadastro = !ehCadastro; 
-        document.getElementById('titulo').innerText = ehCadastro ? "Criar Conta" : "Entrar";
-    }
-
-    async function authAcao() {
+    async function entrar() {
         const email = document.getElementById('email').value;
         const senha = document.getElementById('senha').value;
+        const status = document.getElementById('status');
 
-        if (ehCadastro) {
-            const { data, error } = await _supabase.auth.signUp({ email, password: senha });
-            if (error) return alert("Erro no Cadastro: " + error.message);
-            // Cria o perfil na tabela
-            await _supabase.from('perfis').insert([{ id: data.user.id, saldo_score: 0 }]);
-            alert("Conta criada! Agora faça Login.");
-            trocar();
+        status.innerText = "Conectando...";
+        
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+
+        if (error) {
+            status.innerText = "Erro: " + error.message;
         } else {
-            const { data, error } = await _supabase.auth.signInWithPassword({ email, password: senha });
-            if (error) return alert("Erro no Login: " + error.message);
-            
-            // FORÇA A TROCA DE TELA
-            document.getElementById('tela-auth').style.display = 'none';
-            document.getElementById('tela-cliente').classList.remove('hidden');
-            
-            buscarSaldo(data.user.id);
+            document.getElementById('area-login').style.display = 'none';
+            document.getElementById('area-cliente').classList.remove('hidden');
+            carregarDados(data.user.id);
         }
     }
 
-    async function buscarSaldo(uid) {
-        const { data, error } = await _supabase.from('perfis').select('saldo_score').eq('id', uid).single();
+    async function cadastrar() {
+        const email = document.getElementById('email').value;
+        const senha = document.getElementById('senha').value;
+        
+        const { data, error } = await supabaseClient.auth.signUp({ email, password: senha });
+
+        if (error) {
+            alert("Erro no cadastro: " + error.message);
+        } else {
+            // Cria o registro de saldo para o novo usuário
+            await supabaseClient.from('perfis').insert([{ id: data.user.id, saldo_score: 0 }]);
+            alert("Conta criada! Clique em Entrar agora.");
+        }
+    }
+
+    async function carregarDados(userId) {
+        const { data } = await supabaseClient.from('perfis').select('saldo_score').eq('id', userId).single();
         if (data) document.getElementById('saldo').innerText = `R$ ${data.saldo_score.toFixed(2)}`;
-        else console.log("Erro ao buscar saldo ou perfil não existe.");
     }
 </script>
 </body>
