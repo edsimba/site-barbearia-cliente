@@ -3,133 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barbearia Score - Fidelidade</title>
+    <title>Barbearia Score</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: white; display: flex; justify-content: center; padding: 20px; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); border: 1px solid #333; }
-        h2, h3 { text-align: center; color: #e67e22; }
-        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; box-sizing: border-box; }
-        input { background: #2b2b2b; color: white; }
-        button { background: #e67e22; color: white; font-weight: bold; border: none; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #d35400; }
-        .score-box { background: #1b5e20; padding: 20px; text-align: center; border-radius: 12px; margin-bottom: 20px; border: 2px solid #2e7d32; }
-        .score-box span { font-size: 14px; opacity: 0.8; }
-        .score-box h1 { margin: 5px 0; font-size: 32px; }
-        .horarios { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .hora-btn { background: #333; font-size: 14px; border: 1px solid #444; }
-        .hora-btn:focus { background: #e67e22; border-color: white; }
-        .hidden { display: none; }
-        .footer-link { text-align: center; font-size: 12px; margin-top: 15px; cursor: pointer; color: #aaa; }
+        body { font-family: sans-serif; background: #121212; color: white; display: flex; justify-content: center; padding: 20px; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; width: 100%; max-width: 400px; border: 1px solid #333; }
+        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; box-sizing: border-box; }
+        button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; }
+        .hidden { display: none !important; }
+        .score-box { background: #1b5e20; padding: 20px; text-align: center; border-radius: 12px; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <div id="auth-area">
-        <h2 id="auth-title">Entrar na Conta</h2>
-        <input type="email" id="email" placeholder="Seu e-mail">
-        <input type="password" id="senha" placeholder="Sua senha">
-        <button id="btn-principal" onclick="fazerLogin()">Entrar agora</button>
-        <div class="footer-link" id="toggle-auth" onclick="alternarTela()">Não tem conta? Cadastre-se aqui</div>
+        <h2 id="titulo">Entrar</h2>
+        <input type="email" id="email" placeholder="E-mail">
+        <input type="password" id="senha" placeholder="Senha">
+        <button onclick="executarAcao()" id="btn-auth">Entrar agora</button>
+        <p onclick="alternar()" id="link-alt" style="text-align:center; cursor:pointer; color:#aaa;">Não tem conta? Cadastre-se</p>
     </div>
 
     <div id="cliente-area" class="hidden">
         <div class="score-box">
-            <span>Seu Saldo Fidelidade</span>
+            <span>Seu Saldo</span>
             <h1 id="saldo-display">R$ 0,00</h1>
-            <small id="aviso-resgate">Mínimo para resgate: R$ 1,00</small>
         </div>
-
-        <h3>Agendar para Domingo</h3>
-        <select id="servico-select">
-            <option value="Social" data-score="0.05">Social - R$ 20,00</option>
-            <option value="Degradê" data-score="0.07">Degradê - R$ 25,00</option>
-            <option value="Social + Barba" data-score="0.10">Social + Barba - R$ 30,00</option>
-            <option value="Luzes" data-score="0.30">Luzes - R$ 60,00</option>
-            <option value="Barba" data-score="0.02">Barba - R$ 10,00</option>
-        </select>
-
-        <div class="horarios">
-            <button class="hora-btn" onclick="selecionarHora('10:00')">10:00</button>
-            <button class="hora-btn" onclick="selecionarHora('11:20')">11:20</button>
-            <button class="hora-btn" onclick="selecionarHora('12:35')">12:35</button>
-            <button class="hora-btn" onclick="selecionarHora('15:00')">15:00</button>
-            <button class="hora-btn" onclick="selecionarHora('16:30')">16:30</button>
-            <button class="hora-btn" onclick="selecionarHora('17:50')">17:50</button>
-        </div>
-        
-        <p id="info-agendamento" style="text-align:center; color:#e67e22; font-weight:bold;"></p>
-        <button id="btn-agendar" onclick="finalizarAgendamento()" class="hidden">Confirmar Agendamento</button>
-        <button onclick="supabase.auth.signOut(); location.reload();" style="background:#444; margin-top:30px;">Sair</button>
+        <h3>Agendar Domingo</h3>
+        <p>Escolha o horário e avise o barbeiro no local.</p>
+        <button onclick="location.reload()" style="background:#444">Sair</button>
     </div>
 </div>
 
 <script>
-    // Suas credenciais do Supabase
     const SUPABASE_URL = "https://vbckjvgefobuwwswlrdk.supabase.co";
     const SUPABASE_KEY = "sb_publishable_j8gX5czIDTtA3Ex3-zDPsw_n5RUbZoD";
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let modoCadastro = false;
-    let horaSelecionada = "";
+    let isCadastro = false;
 
-    function alternarTela() {
-        modoCadastro = !modoCadastro;
-        document.getElementById('auth-title').innerText = modoCadastro ? "Criar Nova Conta" : "Entrar na Conta";
-        document.getElementById('btn-principal').innerText = modoCadastro ? "Cadastrar" : "Entrar agora";
-        document.getElementById('toggle-auth').innerText = modoCadastro ? "Já tem conta? Entre aqui" : "Não tem conta? Cadastre-se aqui";
-        document.getElementById('btn-principal').onclick = modoCadastro ? fazerCadastro : fazerLogin;
+    function alternar() {
+        isCadastro = !isCadastro;
+        document.getElementById('titulo').innerText = isCadastro ? "Criar Conta" : "Entrar";
+        document.getElementById('btn-auth').innerText = isCadastro ? "Cadastrar" : "Entrar agora";
+        document.getElementById('link-alt').innerText = isCadastro ? "Já tem conta? Entre" : "Não tem conta? Cadastre-se";
     }
 
-    async function fazerCadastro() {
+    async function executarAcao() {
         const email = document.getElementById('email').value;
         const senha = document.getElementById('senha').value;
-        
-        const { data, error } = await _supabase.auth.signUp({ email, password });
-        
-        if (error) alert("Erro: " + error.message);
-        else {
-            // Cria o perfil na tabela 'perfis' que criamos no SQL
-            await _supabase.from('perfis').insert([{ id: data.user.id, saldo_score: 0.00 }]);
-            alert("Conta criada com sucesso! Faça login.");
-            alternarTela();
+        const btn = document.getElementById('btn-auth');
+
+        btn.innerText = "Carregando...";
+        btn.disabled = true;
+
+        if (isCadastro) {
+            const { data, error } = await _supabase.auth.signUp({ email, password: senha });
+            if (error) { alert("Erro no Cadastro: " + error.message); btn.disabled = false; return; }
+            // Tenta criar o perfil
+            await _supabase.from('perfis').insert([{ id: data.user.id, saldo_score: 0 }]);
+            alert("Conta criada! Tente fazer login agora.");
+            alternar();
+        } else {
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password: senha });
+            if (error) { alert("Erro no Login: " + error.message); btn.disabled = false; return; }
+            
+            // SE CHEGOU AQUI, O LOGIN FOI SUCESSO. FORÇAR TROCA DE TELA.
+            mostrarPainel(data.user);
         }
+        btn.innerText = isCadastro ? "Cadastrar" : "Entrar agora";
+        btn.disabled = false;
     }
 
-    async function fazerLogin() {
-        const email = document.getElementById('email').value;
-        const senha = document.getElementById('senha').value;
-        
-        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-        
-        if (error) alert("Erro: " + error.message);
-        else inicializarPainel(data.user);
-    }
-
-    async function inicializarPainel(user) {
+    async function mostrarPainel(user) {
         document.getElementById('auth-area').classList.add('hidden');
         document.getElementById('cliente-area').classList.remove('hidden');
-        
-        const { data } = await _supabase.from('perfis').select('saldo_score').eq('id', user.id).single();
+
+        const { data, error } = await _supabase.from('perfis').select('saldo_score').eq('id', user.id).single();
         if (data) {
             document.getElementById('saldo-display').innerText = `R$ ${data.saldo_score.toFixed(2)}`;
-            if (data.saldo_score >= 1.00) {
-                document.getElementById('aviso-resgate').innerText = "✅ Você pode usar seu desconto!";
-                document.getElementById('aviso-resgate').style.color = "#afffaf";
-            }
         }
-    }
-
-    function selecionarHora(hora) {
-        horaSelecionada = hora;
-        document.getElementById('info-agendamento').innerText = "Agendado para Domingo às " + hora;
-        document.getElementById('btn-agendar').classList.remove('hidden');
-    }
-
-    async function finalizarAgendamento() {
-        const servico = document.getElementById('servico-select').value;
-        alert(`Sucesso! Seu agendamento de ${servico} para às ${horaSelecionada} foi enviado. O barbeiro confirmará seu score no atendimento.`);
     }
 </script>
 </body>
