@@ -3,42 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barbearia Score - Oficial</title>
+    <title>Barbearia Score</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
-        .box { background: #1e1e1e; padding: 20px; border-radius: 10px; max-width: 350px; margin: auto; border: 1px solid #333; }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; }
+        .box { background: #1e1e1e; padding: 25px; border-radius: 12px; max-width: 380px; margin: auto; border: 1px solid #333; }
+        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; box-sizing: border-box; }
         button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; }
         .hidden { display: none !important; }
-        #status { color: #ff5555; font-size: 12px; margin-top: 10px; }
+        #status { color: #ff9f43; font-size: 13px; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="box">
-    <div id="area-login">
-        <h2>Acessar</h2>
+    <div id="tela-login">
+        <h2>Barbearia Score</h2>
         <input type="email" id="email" placeholder="E-mail">
         <input type="password" id="senha" placeholder="Senha">
-        <button onclick="entrar()">Entrar</button>
-        <button onclick="cadastrar()" style="background: #333;">Criar Conta</button>
+        <button onclick="entrar()">ENTRAR</button>
+        <button onclick="cadastrar()" style="background: #333;">CADASTRAR NOVA CONTA</button>
         <div id="status"></div>
     </div>
 
-    <div id="area-cliente" class="hidden">
-        <div style="background: #1b5e20; padding: 15px; border-radius: 8px;">
-            <p>Saldo Score</p>
-            <h1 id="saldo">R$ 0,00</h1>
+    <div id="tela-cliente" class="hidden">
+        <div style="background: #1b5e20; padding: 20px; border-radius: 10px; border: 2px solid #2ecc71;">
+            <p style="margin:0; opacity: 0.8;">Meu Saldo Fidelidade</p>
+            <h1 id="saldo" style="margin: 10px 0; font-size: 36px;">R$ 0,00</h1>
         </div>
-        <p>Atendimento aos Domingos</p>
-        <button onclick="location.reload()" style="background:#444">Sair</button>
+        <p style="margin-top:20px; color: #aaa;">Agendamentos apenas aos Domingos.</p>
+        <button onclick="location.reload()" style="background:#c0392b; margin-top:30px;">SAIR DA CONTA</button>
     </div>
 </div>
 
 <script>
+    // DADOS DO SEU PROJETO (CONFERIDOS)
     const URL = "https://vbckjvgefobuwwswlrdk.supabase.co";
-    const KEY = "sb_secret_dXf9lhTv6iuNFdzUPlcveQ_E2XdfmTp";
+    // PEGUE A CHAVE DA SUA FOTO 3 (A QUE COMEÇA COM sb_secret)
+    const KEY = "sb_secret_dXf9lhTv6iuNFdzUPlcveQ_E2XdfmTp"; 
+
     const supabaseClient = supabase.createClient(URL, KEY);
 
     async function entrar() {
@@ -46,16 +49,17 @@
         const senha = document.getElementById('senha').value;
         const status = document.getElementById('status');
 
-        status.innerText = "Conectando...";
+        if(!email || !senha) return alert("Preencha tudo!");
         
+        status.innerText = "Conectando ao servidor...";
+
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
 
         if (error) {
             status.innerText = "Erro: " + error.message;
         } else {
-            document.getElementById('area-login').style.display = 'none';
-            document.getElementById('area-cliente').classList.remove('hidden');
-            carregarDados(data.user.id);
+            status.innerText = "Sucesso! Carregando painel...";
+            mostrarPainel(data.user);
         }
     }
 
@@ -63,20 +67,28 @@
         const email = document.getElementById('email').value;
         const senha = document.getElementById('senha').value;
         
+        if(!email || !senha) return alert("Preencha e-mail e senha!");
+
         const { data, error } = await supabaseClient.auth.signUp({ email, password: senha });
 
         if (error) {
             alert("Erro no cadastro: " + error.message);
         } else {
-            // Cria o registro de saldo para o novo usuário
-            await supabaseClient.from('perfis').insert([{ id: data.user.id, saldo_score: 0 }]);
-            alert("Conta criada! Clique em Entrar agora.");
+            // Cria o saldo inicial R$ 0,00 na tabela 'perfis' que aparece na sua foto 2
+            await supabaseClient.from('perfis').insert([{ id: data.user.id, saldo_score: 0.00 }]);
+            alert("Conta criada com sucesso! Agora clique em ENTRAR.");
         }
     }
 
-    async function carregarDados(userId) {
-        const { data } = await supabaseClient.from('perfis').select('saldo_score').eq('id', userId).single();
-        if (data) document.getElementById('saldo').innerText = `R$ ${data.saldo_score.toFixed(2)}`;
+    async function mostrarPainel(user) {
+        document.getElementById('tela-login').classList.add('hidden');
+        document.getElementById('tela-cliente').classList.remove('hidden');
+
+        // Busca o saldo real do cliente
+        const { data, error } = await supabaseClient.from('perfis').select('saldo_score').eq('id', user.id).single();
+        if (data) {
+            document.getElementById('saldo').innerText = `R$ ${data.saldo_score.toFixed(2)}`;
+        }
     }
 </script>
 </body>
