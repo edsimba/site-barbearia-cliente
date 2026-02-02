@@ -2,151 +2,193 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel Administrativo - Barbearia</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADM - Barbearia Score</title>
     <style>
-        body { font-family: 'Poppins', sans-serif; background: #f0f2f5; padding: 20px; }
-        .container { max-width: 800px; margin: auto; }
-        .card { 
-            background: white; padding: 20px; border-radius: 15px; 
-            margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            border-left: 5px solid #b08d57;
-        }
-        .info { margin-bottom: 10px; }
-        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: white; padding: 20px; }
+        .container { max-width: 600px; margin: auto; }
+        .card-agendamento { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: left; position: relative; border-left: 5px solid #e67e22; }
         
-        button { 
-            padding: 10px 15px; border: none; border-radius: 8px; 
-            cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 12px;
-        }
-
-        .btn-confirm { background: #27ae60; color: white; }
-        .btn-cancel { background: #d63031; color: white; }
+        /* Botões Padrão */
+        .btn-confirmar { background: #27ae60; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px; }
+        .btn-excluir { background: #c0392b; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 5px; width: 100%; opacity: 0.8; }
         
-        /* NOVOS BOTÕES DE RESGATE */
-        .btn-permitir { background: #2980b9; color: white; }
-        .btn-negar { background: #7f8c8d; color: white; }
+        /* Novos Botões de Resgate */
+        .btn-resgate-sim { background: #2980b9; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px; }
+        .btn-resgate-nao { background: #7f8c8d; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 5px; width: 100%; }
 
-        .tag-resgate { 
-            background: #ffeaa7; color: #d35400; 
-            padding: 5px 10px; border-radius: 5px; 
-            font-weight: bold; display: inline-block; margin-top: 5px;
-        }
-        h2 { color: #333; }
+        .status-badge { background: #f1c40f; color: black; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .resgate-badge { background: #d35400; color: white; padding: 5px; border-radius: 4px; font-size: 12px; font-weight: bold; text-align: center; margin-top: 10px; display: block; }
+        
+        .cliente-nome { color: #e67e22; font-size: 18px; font-weight: bold; margin: 10px 0 5px 0; }
+        .info-linha { font-size: 14px; margin: 3px 0; color: #ccc; }
+        h2 { border-bottom: 2px solid #e67e22; padding-bottom: 10px; margin-top: 30px; }
+        .loading { color: #f1c40f; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <h1>Painel do Barbeiro ✂️</h1>
+    <button onclick="carregarAgendamentos()" style="background:#333; color:white; padding:12px; width:100%; border-radius:8px; border:1px solid #444; margin-bottom:20px; cursor:pointer; font-weight: bold;">🔄 ATUALIZAR LISTA</button>
+    
     <h2>Agendamentos Pendentes</h2>
-    <div id="lista-agendamentos">Carregando...</div>
+    <div id="lista-pendentes">
+        <p class="loading">Buscando agendamentos...</p>
+    </div>
 </div>
 
 <script>
     const API_CADASTRO = "https://sheetdb.io/api/v1/i2no77emc4yng";
     const API_AGENDAMENTO = "https://sheetdb.io/api/v1/izye8xzdqeub5";
 
-    async function buscarAgendamentos() {
-        try {
-            const res = await fetch(`${API_AGENDAMENTO}/search?status=Pendente`);
-            const dados = await res.json();
-            const lista = document.getElementById('lista-agendamentos');
-            lista.innerHTML = "";
+    async function carregarAgendamentos() {
+        const div = document.getElementById('lista-pendentes');
+        div.innerHTML = "<p class='loading'>Carregando dados da planilha...</p>";
 
-            if(dados.length === 0) {
-                lista.innerHTML = "<p>Nenhum agendamento pendente.</p>";
+        try {
+            // Busca todos os agendamentos pendentes
+            const resAgend = await fetch(`${API_AGENDAMENTO}/search?status=Pendente`);
+            const agendamentos = await resAgend.json();
+
+            // Busca a lista de clientes para pegar os nomes e saldos
+            const resClientes = await fetch(API_CADASTRO);
+            const clientes = await resClientes.json();
+
+            if (agendamentos.length === 0) {
+                div.innerHTML = "<p style='color: #888;'>Nenhum agendamento pendente para hoje.</p>";
                 return;
             }
 
-            dados.forEach((ag, index) => {
-                const solicitouResgate = ag.usar_score === "Sim";
-                
-                lista.innerHTML += `
-                    <div class="card">
-                        <div class="info">
-                            <strong>Cliente:</strong> ${ag.cliente_email}<br>
-                            <strong>Serviço:</strong> ${ag.servico} - ${ag.data_domingo} às ${ag.horario}<br>
-                            ${solicitouResgate ? `<span class="tag-resgate">⚠️ SOLICITOU USAR SCORE</span>` : ''}
+            div.innerHTML = "";
+            agendamentos.forEach((item) => {
+                // Tenta encontrar o nome do cliente pelo e-mail
+                const dadosCliente = clientes.find(c => c.email === item.cliente_email);
+                const nomeExibir = dadosCliente ? dadosCliente.nome : "Cliente não encontrado";
+                const whatsExibir = dadosCliente ? dadosCliente.whatsapp : "Sem número";
+                const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo).toFixed(2) : "0.00";
+
+                // Verifica se pediu para usar Score
+                const pediuResgate = item.usar_score === "Sim";
+
+                let botoesAcao = "";
+
+                if (pediuResgate) {
+                    botoesAcao = `
+                        <div class="resgate-badge">⚠️ CLIENTE QUER USAR O SALDO (R$ ${saldoAtual})</div>
+                        <button class="btn-resgate-sim" onclick="permitirResgate('${item.cliente_email}', '${nomeExibir}')">
+                            ✅ PERMITIR (ZERAR SALDO E CONCLUIR)
+                        </button>
+                        <button class="btn-resgate-nao" onclick="confirmarPagamento('${item.cliente_email}', '${item.score_pendente}', '${nomeExibir}')">
+                            ❌ NEGAR (COBRAR NORMAL)
+                        </button>
+                    `;
+                } else {
+                    botoesAcao = `
+                        <button class="btn-confirmar" onclick="confirmarPagamento('${item.cliente_email}', '${item.score_pendente}', '${nomeExibir}')">
+                            CONFIRMAR PAGAMENTO E LIBERAR SCORE
+                        </button>
+                    `;
+                }
+
+                div.innerHTML += `
+                    <div class="card-agendamento">
+                        <span class="status-badge">Aguardando</span>
+                        <div class="cliente-nome">${nomeExibir}</div>
+                        <div class="info-linha">📱 WhatsApp: ${whatsExibir}</div>
+                        <div class="info-linha">💇‍♂️ Serviço: <strong>${item.servico}</strong></div>
+                        <div class="info-linha">💰 Valor: R$ ${item.valor_servico}</div>
+                        <div class="info-linha">📅 Data: ${item.data_domingo} às ${item.horario}</div>
+                        <div class="info-linha" style="color: #27ae60; font-weight: bold; margin-top: 10px;">
+                            ⭐ Score a liberar: R$ ${item.score_pendente.replace('.', ',')}
                         </div>
-                        <div class="btn-group">
-                            ${solicitouResgate ? `
-                                <button class="btn-permitir" onclick="processarResgate('${ag.cliente_email}', '${index}', 'Sim')">Permitir Resgate (Zerar Saldo)</button>
-                                <button class="btn-negar" onclick="processarResgate('${ag.cliente_email}', '${index}', 'Não')">Negar Resgate</button>
-                            ` : `
-                                <button class="btn-confirm" onclick="confirmarAtendimento('${ag.cliente_email}', '${ag.score_pendente}', '${index}')">Confirmar e Somar Score</button>
-                            `}
-                            <button class="btn-cancel" onclick="cancelarAgendamento('${index}')">Cancelar Vaga</button>
-                        </div>
+                        
+                        ${botoesAcao}
+
+                        <button class="btn-excluir" onclick="cancelarAgendamento('${item.cliente_email}', '${item.horario}')">CANCELAR AGENDAMENTO</button>
                     </div>
                 `;
             });
-        } catch (e) { console.error("Erro ao buscar."); }
+        } catch (e) {
+            div.innerHTML = "<p style='color: red;'>Erro ao conectar com a planilha. Verifique a internet.</p>";
+        }
     }
 
-    // FUNÇÃO QUE ZERA O SALDO E CONCLUI
-    async function processarResgate(email, index, permissao) {
-        if (permissao === 'Sim') {
-            const confirmacao = confirm("Deseja PERMITIR o resgate? O saldo do cliente será ZERADO.");
-            if (!confirmacao) return;
+    // --- FUNÇÃO PARA QUANDO O CLIENTE PAGA NORMALMENTE ---
+    async function confirmarPagamento(email, score, nome) {
+        if (!confirm(`Confirmar pagamento de ${nome}? \nO score de R$ ${score} será SOMADO ao saldo.`)) return;
 
-            // 1. Zera o saldo do cliente no banco de cadastros
+        try {
+            const resUser = await fetch(`${API_CADASTRO}/search?email=${email}`);
+            const user = await resUser.json();
+
+            if (user.length > 0) {
+                const saldoAntigo = parseFloat(user[0].saldo) || 0;
+                const bonus = parseFloat(score) || 0;
+                const novoSaldo = (saldoAntigo + bonus).toFixed(2);
+
+                // Atualiza Saldo (Soma)
+                await fetch(`${API_CADASTRO}/email/${email}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "saldo": novoSaldo })
+                });
+
+                // Conclui Agendamento
+                await fetch(`${API_AGENDAMENTO}/cliente_email/${email}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "status": "Concluido" })
+                });
+
+                alert("Pagamento confirmado! Score adicionado.");
+                carregarAgendamentos();
+            }
+        } catch (e) { alert("Erro ao processar."); }
+    }
+
+    // --- NOVA FUNÇÃO: PERMITIR RESGATE (ZERA O SALDO) ---
+    async function permitirResgate(email, nome) {
+        if (!confirm(`ATENÇÃO!\nVocê vai autorizar o uso do saldo de ${nome}.\n\nO saldo do cliente será ZERADO (R$ 0,00) e o agendamento será concluído.`)) return;
+
+        try {
+            // Zera o saldo do cliente
             await fetch(`${API_CADASTRO}/email/${email}`, {
                 method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ "saldo": 0 })
             });
-            alert("Saldo zerado com sucesso!");
-        } else {
-            alert("Resgate negado. O atendimento será processado normalmente.");
-        }
 
-        // 2. Conclui o agendamento
-        await atualizarStatus(index, "Concluido");
-    }
-
-    // FUNÇÃO NORMAL DE CONFIRMAR (SOMA SCORE)
-    async function confirmarAtendimento(email, scoreParaSomar, index) {
-        try {
-            const res = await fetch(`${API_CADASTRO}/search?email=${email}`);
-            const user = await res.json();
-            const novoSaldo = (parseFloat(user[0].saldo) || 0) + parseFloat(scoreParaSomar);
-
-            await fetch(`${API_CADASTRO}/email/${email}`, {
+            // Conclui o agendamento
+            await fetch(`${API_AGENDAMENTO}/cliente_email/${email}`, {
                 method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ "saldo": novoSaldo })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ "status": "Concluido" })
             });
 
-            await atualizarStatus(index, "Concluido");
-            alert("Score adicionado e atendimento concluído!");
-        } catch (e) { alert("Erro ao confirmar."); }
+            alert("Resgate autorizado! O saldo do cliente foi zerado.");
+            carregarAgendamentos();
+        } catch (e) { alert("Erro ao processar o resgate."); }
     }
 
-    async function cancelarAgendamento(index) {
-        if(confirm("Deseja cancelar essa vaga?")) {
-            await atualizarStatus(index, "Cancelado");
-            alert("Agendamento cancelado.");
-        }
+    async function cancelarAgendamento(email, hora) {
+        if (!confirm("Deseja realmente cancelar este agendamento?")) return;
+        
+        try {
+            await fetch(`${API_AGENDAMENTO}/cliente_email/${email}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ "status": "Cancelado" })
+            });
+            alert("Agendamento cancelado e horário liberado.");
+            carregarAgendamentos();
+        } catch (e) { alert("Erro ao cancelar."); }
     }
 
-    async function atualizarStatus(index, novoStatus) {
-        // Busca o ID interno da linha para atualizar corretamente
-        const res = await fetch(`${API_AGENDAMENTO}`);
-        const todos = await res.json();
-        // Filtramos apenas os pendentes para achar o índice correto na planilha original
-        const pendentes = todos.filter(a => a.status === "Pendente");
-        const agendamentoOriginal = pendentes[index];
-
-        await fetch(`${API_AGENDAMENTO}/horario/${agendamentoOriginal.horario}`, {
-            method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ "status": novoStatus })
-        });
-        buscarAgendamentos();
-    }
-
-    buscarAgendamentos();
-    setInterval(buscarAgendamentos, 30000); // Atualiza a cada 30 segundos
+    // Carregar ao abrir a página
+    carregarAgendamentos();
+    // Atualização automática a cada 30 segundos
+    setInterval(carregarAgendamentos, 30000);
 </script>
-
 </body>
 </html>
