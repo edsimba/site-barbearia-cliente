@@ -47,6 +47,7 @@
             transition: 0.3s;
             outline: none;
             display: block;
+            box-sizing: border-box;
         }
 
         input:focus, select:focus { border-color: var(--primary); background-color: #fff; }
@@ -60,7 +61,6 @@
             margin-top: 15px;
         }
 
-        /* CARD DE SALDO REESTRUTURADO */
         .score-card { 
             background: #1a1a1a; 
             padding: 25px; border-radius: 18px; 
@@ -78,7 +78,6 @@
         .score-card h1 { margin: 5px 0; font-size: 40px; color: #fff; }
         .score-card p#nome-display { color: var(--primary); font-weight: 600; margin-top: 5px; font-size: 15px; }
 
-        /* NOVO POSICIONAMENTO DO BOTÃO DE RESGATE */
         .btn-usar-saldo {
             background: rgba(176, 141, 87, 0.2);
             color: var(--primary);
@@ -94,11 +93,7 @@
             transition: 0.3s;
         }
 
-        .btn-usar-saldo.cancelar {
-            background: #c0392b;
-            color: white;
-            border-color: #c0392b;
-        }
+        .btn-usar-saldo.cancelar { background: #c0392b; color: white; border-color: #c0392b; }
 
         .hidden { display: none !important; }
 
@@ -126,7 +121,7 @@
         <input type="text" id="cad-nome" placeholder="Nome completo">
         <input type="email" id="cad-email" placeholder="E-mail">
         <input type="password" id="cad-senha" placeholder="Crie uma senha">
-        <input type="tel" id="cad-whatsapp" placeholder="WhatsApp (DDD) 9..." maxlength="15">
+        <input type="tel" id="cad-whatsapp" placeholder="(xx) xxxxx-xxxx" maxlength="15">
         <button onclick="finalizarCadastro()">Criar Conta</button>
         <p onclick="irParaLogin()" style="cursor:pointer; color:#888; font-size:14px; text-align:center; margin-top:10px;">Voltar ao login</p>
     </div>
@@ -180,7 +175,6 @@
             <p><strong>SERVIÇO:</strong> <span id="nota-serv"></span></p>
             <p><strong>VALOR:</strong> R$ <span id="nota-valor"></span></p>
         </div>
-
         <button onclick="location.reload()" style="background:none; color:#aaa; font-size:12px; border:1px solid #ddd; margin-top: 20px;">Sair da conta</button>
     </div>
 </div>
@@ -190,6 +184,12 @@
     const API_AGENDAMENTO = "https://sheetdb.io/api/v1/izye8xzdqeub5";
     let SALDO_ATUAL = 0;
     let QUER_USAR_SCORE = "Não";
+
+    // MÁSCARA AUTOMÁTICA WHATSAPP
+    document.getElementById('cad-whatsapp').addEventListener('input', (e) => {
+        let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+        e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+    });
 
     async function logar() {
         const email = document.getElementById('login-email').value;
@@ -210,21 +210,49 @@
         } catch (e) { alert("Erro de conexão."); }
     }
 
+    async function bloquearHorariosOcupados() {
+        const dataEscolhida = document.getElementById('select-domingo').value;
+        const selectHora = document.getElementById('select-horario');
+        if(!dataEscolhida) return;
+
+        // Resetar opções
+        for(let i = 0; i < selectHora.options.length; i++) {
+            let opt = selectHora.options[i];
+            if(opt.value === "") continue;
+            opt.disabled = false; opt.text = opt.value; opt.style.backgroundColor = ""; opt.style.color = "";
+        }
+
+        try {
+            // Busca agendamentos PENDENTES para a DATA escolhida
+            const res = await fetch(`${API_AGENDAMENTO}/search?data_domingo=${dataEscolhida}&status=Pendente`);
+            const ocupados = await res.json();
+            
+            ocupados.forEach(ag => {
+                for(let i = 0; i < selectHora.options.length; i++) {
+                    let opt = selectHora.options[i];
+                    if(opt.value === ag.horario) {
+                        opt.disabled = true;
+                        opt.text = ag.horario + " (OCUPADO)";
+                        opt.style.backgroundColor = "#ffe5e5";
+                        opt.style.color = "#d63031";
+                    }
+                }
+            });
+        } catch(e) { console.error("Erro ao verificar horários."); }
+    }
+
     function toggleResgate() {
         if (SALDO_ATUAL < 1.00) {
             alert("O uso do Score só é permitido para saldos a partir de R$ 1,00.");
             return;
         }
-
         const card = document.getElementById('card-saldo');
         const btn = document.getElementById('btn-resgate');
-
         if (QUER_USAR_SCORE === "Não") {
             QUER_USAR_SCORE = "Sim";
             card.classList.add('active-resgate');
             btn.innerText = "CANCELAR USO";
             btn.classList.add('cancelar');
-            alert("Score ativado! O barbeiro verá seu pedido de desconto.");
         } else {
             QUER_USAR_SCORE = "Não";
             card.classList.remove('active-resgate');
@@ -237,7 +265,7 @@
         const serv = document.getElementById('select-servico').value;
         const hora = document.getElementById('select-horario').value;
         const dataD = document.getElementById('select-domingo').value;
-        if(!serv || !hora || !dataD) return alert("Por favor, preencha todos os campos.");
+        if(!serv || !hora || !dataD) return alert("Preencha todos os campos.");
 
         const [nomeS, valorS, scoreS] = serv.split('|');
         const email = document.getElementById('login-email').value;
@@ -264,45 +292,9 @@
         } catch (e) { alert("Erro ao agendar."); }
     }
 
-    async function bloquearHorariosOcupados() {
-        const dataEscolhida = document.getElementById('select-domingo').value;
-        const selectHora = document.getElementById('select-horario');
-        if(!dataEscolhida) return;
-        const agora = new Date();
-        const diaHoje = String(agora.getDate()).padStart(2, '0') + "/" + String(agora.getMonth() + 1).padStart(2, '0') + "/" + agora.getFullYear();
-        const horaAtual = agora.getHours();
-        const minAtual = agora.getMinutes();
-
-        for(let i = 0; i < selectHora.options.length; i++) {
-            let opt = selectHora.options[i];
-            if(opt.value === "") continue;
-            opt.disabled = false; opt.text = opt.value; opt.style.backgroundColor = ""; opt.style.color = "";
-            if(dataEscolhida === diaHoje) {
-                let [h, m] = opt.value.split(':');
-                if(parseInt(h) < horaAtual || (parseInt(h) === horaAtual && parseInt(m) <= minAtual)) {
-                    opt.disabled = true; opt.text = opt.value + " (Encerrado)";
-                }
-            }
-        }
-
-        try {
-            const res = await fetch(`${API_AGENDAMENTO}/search?data_domingo=${dataEscolhida}&status=Pendente`);
-            const ocupados = await res.json();
-            ocupados.forEach(ag => {
-                for(let i = 0; i < selectHora.options.length; i++) {
-                    let opt = selectHora.options[i];
-                    if(opt.value === ag.horario) {
-                        opt.disabled = true; opt.text = ag.horario + " (OCUPADO)";
-                        opt.style.backgroundColor = "#ffe5e5"; opt.style.color = "#d63031";
-                    }
-                }
-            });
-        } catch(e) {}
-    }
-
     function carregarDomingos() {
         const select = document.getElementById('select-domingo');
-        select.innerHTML = '<option value="">Selecione o Domingo</option>';
+        select.innerHTML = '<option value="">Selecione a Data</option>';
         let data = new Date();
         let domingosEncontrados = 0;
         if(data.getDay() === 0) { adicionarOpcaoData(select, data); domingosEncontrados++; }
@@ -345,14 +337,14 @@
         const email = document.getElementById('cad-email').value;
         const senha = document.getElementById('cad-senha').value;
         const whatsapp = document.getElementById('cad-whatsapp').value;
-        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha todos os dados!");
+        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha todos os dados corretamente!");
         try {
             await fetch(API_CADASTRO, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ "nome": nome, "email": email, "senha": senha, "whatsapp": whatsapp, "saldo": 0 })
             });
-            alert("Cadastro realizado com sucesso!"); irParaLogin();
+            alert("Cadastro realizado!"); irParaLogin();
         } catch (e) { alert("Erro ao cadastrar."); }
     }
 </script>
