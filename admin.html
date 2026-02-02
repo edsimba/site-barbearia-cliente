@@ -9,11 +9,11 @@
         .container { max-width: 600px; margin: auto; }
         .card-agendamento { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: left; position: relative; border-left: 5px solid #e67e22; }
         
-        /* Botões Padrão */
+        /* Botões */
         .btn-confirmar { background: #27ae60; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px; }
         .btn-excluir { background: #c0392b; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 5px; width: 100%; opacity: 0.8; }
         
-        /* Novos Botões de Resgate */
+        /* Botões de Resgate */
         .btn-resgate-sim { background: #2980b9; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px; }
         .btn-resgate-nao { background: #7f8c8d; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 5px; width: 100%; }
 
@@ -47,11 +47,8 @@
         div.innerHTML = "<p class='loading'>Carregando dados da planilha...</p>";
 
         try {
-            // Busca todos os agendamentos pendentes
             const resAgend = await fetch(`${API_AGENDAMENTO}/search?status=Pendente`);
             const agendamentos = await resAgend.json();
-
-            // Busca a lista de clientes para pegar os nomes e saldos
             const resClientes = await fetch(API_CADASTRO);
             const clientes = await resClientes.json();
 
@@ -62,13 +59,12 @@
 
             div.innerHTML = "";
             agendamentos.forEach((item) => {
-                // Tenta encontrar o nome do cliente pelo e-mail
                 const dadosCliente = clientes.find(c => c.email === item.cliente_email);
                 const nomeExibir = dadosCliente ? dadosCliente.nome : "Cliente não encontrado";
                 const whatsExibir = dadosCliente ? dadosCliente.whatsapp : "Sem número";
                 const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo).toFixed(2) : "0.00";
-
-                // Verifica se pediu para usar Score
+                
+                // Verifica explicitamente se é "Sim"
                 const pediuResgate = item.usar_score === "Sim";
 
                 let botoesAcao = "";
@@ -110,16 +106,17 @@
                 `;
             });
         } catch (e) {
-            div.innerHTML = "<p style='color: red;'>Erro ao conectar com a planilha. Verifique a internet.</p>";
+            div.innerHTML = "<p style='color: red;'>Erro ao conectar. Verifique a internet.</p>";
         }
     }
 
-    // --- FUNÇÃO PARA QUANDO O CLIENTE PAGA NORMALMENTE ---
+    // --- FUNÇÃO PADRÃO: SOMA O SCORE (E USADA QUANDO NEGA O RESGATE) ---
     async function confirmarPagamento(email, score, nome) {
-        if (!confirm(`Confirmar pagamento de ${nome}? \nO score de R$ ${score} será SOMADO ao saldo.`)) return;
+        if (!confirm(`Confirmar pagamento de ${nome}? \nO score será ADICIONADO ao saldo.`)) return;
 
         try {
-            const resUser = await fetch(`${API_CADASTRO}/search?email=${email}`);
+            const encodedEmail = encodeURIComponent(email); // Proteção para emails com caracteres especiais
+            const resUser = await fetch(`${API_CADASTRO}/search?email=${encodedEmail}`);
             const user = await resUser.json();
 
             if (user.length > 0) {
@@ -127,67 +124,65 @@
                 const bonus = parseFloat(score) || 0;
                 const novoSaldo = (saldoAntigo + bonus).toFixed(2);
 
-                // Atualiza Saldo (Soma)
-                await fetch(`${API_CADASTRO}/email/${email}`, {
+                await fetch(`${API_CADASTRO}/email/${encodedEmail}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ "saldo": novoSaldo })
                 });
 
-                // Conclui Agendamento
-                await fetch(`${API_AGENDAMENTO}/cliente_email/${email}`, {
+                await fetch(`${API_AGENDAMENTO}/cliente_email/${encodedEmail}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ "status": "Concluido" })
                 });
 
-                alert("Pagamento confirmado! Score adicionado.");
+                alert("Pagamento confirmado! Score somado.");
                 carregarAgendamentos();
             }
         } catch (e) { alert("Erro ao processar."); }
     }
 
-    // --- NOVA FUNÇÃO: PERMITIR RESGATE (ZERA O SALDO) ---
+    // --- FUNÇÃO NOVA: ZERA O SALDO (RESGATE) ---
     async function permitirResgate(email, nome) {
-        if (!confirm(`ATENÇÃO!\nVocê vai autorizar o uso do saldo de ${nome}.\n\nO saldo do cliente será ZERADO (R$ 0,00) e o agendamento será concluído.`)) return;
+        if (!confirm(`ATENÇÃO!\nVocê vai autorizar o uso do saldo de ${nome}.\n\nO saldo do cliente será ZERADO (R$ 0,00).`)) return;
 
         try {
-            // Zera o saldo do cliente
-            await fetch(`${API_CADASTRO}/email/${email}`, {
+            const encodedEmail = encodeURIComponent(email); // Proteção vital
+
+            // Zera o saldo do cliente (Enviando "0" como string para garantir)
+            await fetch(`${API_CADASTRO}/email/${encodedEmail}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "saldo": 0 })
+                body: JSON.stringify({ "saldo": "0" }) 
             });
 
             // Conclui o agendamento
-            await fetch(`${API_AGENDAMENTO}/cliente_email/${email}`, {
+            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodedEmail}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ "status": "Concluido" })
             });
 
-            alert("Resgate autorizado! O saldo do cliente foi zerado.");
+            alert("Resgate autorizado! O saldo foi zerado.");
             carregarAgendamentos();
         } catch (e) { alert("Erro ao processar o resgate."); }
     }
 
     async function cancelarAgendamento(email, hora) {
-        if (!confirm("Deseja realmente cancelar este agendamento?")) return;
-        
+        if (!confirm("Cancelar agendamento?")) return;
         try {
-            await fetch(`${API_AGENDAMENTO}/cliente_email/${email}`, {
+            const encodedEmail = encodeURIComponent(email);
+            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodedEmail}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ "status": "Cancelado" })
             });
-            alert("Agendamento cancelado e horário liberado.");
+            alert("Agendamento cancelado.");
             carregarAgendamentos();
         } catch (e) { alert("Erro ao cancelar."); }
     }
 
-    // Carregar ao abrir a página
     carregarAgendamentos();
-    // Atualização automática a cada 30 segundos
     setInterval(carregarAgendamentos, 30000);
 </script>
 </body>
