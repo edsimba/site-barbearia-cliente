@@ -55,11 +55,8 @@
                 const whatsExibir = dadosCliente ? dadosCliente.whatsapp : "Sem número";
                 const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo || 0).toFixed(2) : "0.00";
                 
-                // VERIFICAÇÃO ROBUSTA DO CAMPO USAR_SCORE
                 const valorResgate = String(item.usar_score || "").trim();
                 const pediuResgate = (valorResgate === "Sim");
-
-                console.log(`Cliente: ${nomeExibir}, Pediu Resgate: ${valorResgate}`); // Para diagnóstico
 
                 let botoesAcao = "";
 
@@ -102,26 +99,34 @@
         }
     }
 
+    // FUNÇÃO QUE ZERA O SALDO (CORRIGIDA)
     async function permitirResgate(email, nome) {
-        if (!confirm(`Autorizar resgate de ${nome}? O saldo será ZERADO.`)) return;
+        if (!confirm(`Autorizar resgate de ${nome}? O saldo será ZERADO AGORA.`)) return;
         try {
-            await fetch(`${API_CADASTRO}/email/${encodeURIComponent(email)}`, {
+            // 1. Zera o saldo enviando string "0" para forçar a planilha
+            const resSaldo = await fetch(`${API_CADASTRO}/email/${encodeURIComponent(email)}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ "saldo": "0" })
             });
-            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodeURIComponent(email)}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "status": "Concluido" })
-            });
-            alert("Resgate realizado!");
-            carregarAgendamentos();
-        } catch (e) { alert("Erro."); }
+
+            if(resSaldo.ok) {
+                // 2. Só conclui o agendamento se o saldo foi zerado com sucesso
+                await fetch(`${API_AGENDAMENTO}/cliente_email/${encodeURIComponent(email)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "status": "Concluido" })
+                });
+                alert("Sucesso! Saldo zerado e agendamento concluído.");
+                carregarAgendamentos();
+            } else {
+                alert("Erro ao zerar saldo na planilha.");
+            }
+        } catch (e) { alert("Erro na conexão com o banco."); }
     }
 
     async function confirmarPagamento(email, score, nome) {
-        if (!confirm(`Confirmar pagamento de ${nome}?`)) return;
+        if (!confirm(`Confirmar pagamento de ${nome}? O score será SOMADO.`)) return;
         try {
             const resUser = await fetch(`${API_CADASTRO}/search?email=${encodeURIComponent(email)}`);
             const user = await resUser.json();
@@ -137,7 +142,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ "status": "Concluido" })
             });
-            alert("Sucesso!");
+            alert("Sucesso! Score adicionado.");
             carregarAgendamentos();
         } catch (e) { alert("Erro."); }
     }
