@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADM - Barbearia Score</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: white; padding: 20px; }
+        .container { max-width: 600px; margin: auto; }
+        .card-agendamento { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: left; position: relative; }
+        .btn-confirmar { background: #27ae60; color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; }
+        .btn-excluir { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 5px; width: 100%; }
+        .status-badge { background: #f1c40f; color: black; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        h2 { border-bottom: 2px solid #e67e22; padding-bottom: 10px; }
+        .loading { color: #f1c40f; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Painel do Barbeiro ✂️</h1>
+    <button onclick="carregarAgendamentos()" style="background:#444; color:white; padding:10px; width:100%; border-radius:5px; border:none; margin-bottom:20px; cursor:pointer;">🔄 Atualizar Lista</button>
+    
+    <h2>Agendamentos Pendentes</h2>
+    <div id="lista-pendentes">
+        <p class="loading">Carregando agendamentos...</p>
+    </div>
+</div>
+
+<script>
+    const API_CADASTRO = "https://sheetdb.io/api/v1/i2no77emc4yng";
+    const API_AGENDAMENTO = "https://sheetdb.io/api/v1/izye8xzdqeub5";
+
+    async function carregarAgendamentos() {
+        const div = document.getElementById('lista-pendentes');
+        div.innerHTML = "<p class='loading'>Buscando...</p>";
+
+        try {
+            const res = await fetch(`${API_AGENDAMENTO}/search?status=Pendente`);
+            const agendamentos = await res.json();
+
+            if (agendamentos.length === 0) {
+                div.innerHTML = "<p>Nenhum agendamento pendente.</p>";
+                return;
+            }
+
+            div.innerHTML = "";
+            agendamentos.forEach((item, index) => {
+                div.innerHTML += `
+                    <div class="card-agendamento">
+                        <span class="status-badge">AGUARDANDO PAGAMENTO</span>
+                        <p><strong>Cliente:</strong> ${item.cliente_email}</p>
+                        <p><strong>Serviço:</strong> ${item.servico} (R$ ${item.valor_servico})</p>
+                        <p><strong>Data/Hora:</strong> ${item.data_domingo} às ${item.horario}</p>
+                        <p style="color: #27ae60;"><strong>Score a liberar:</strong> R$ ${item.score_pendente}</p>
+                        
+                        <button class="btn-confirmar" onclick="confirmarPagamento('${item.cliente_email}', '${item.score_pendente}', '${index}')">
+                            CONFIRMAR PAGAMENTO E LIBERAR SCORE
+                        </button>
+                        <button class="btn-excluir" onclick="removerAgendamento('${index}')">REMOVER SEM LIBERAR</button>
+                    </div>
+                `;
+            });
+        } catch (e) {
+            div.innerHTML = "<p>Erro ao carregar dados.</p>";
+        }
+    }
+
+    async function confirmarPagamento(email, score, index) {
+        if (!confirm("O cliente pagou? O score de R$ " + score + " será somado ao saldo dele.")) return;
+
+        try {
+            // 1. Buscar saldo atual do cliente
+            const resUser = await fetch(`${API_CADASTRO}/search?email=${email}`);
+            const user = await resUser.json();
+
+            if (user.length > 0) {
+                const novoSaldo = parseFloat(user[0].saldo) + parseFloat(score);
+
+                // 2. Atualizar saldo na planilha de usuários
+                await fetch(`${API_CADASTRO}/email/${email}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "saldo": novoSaldo })
+                });
+
+                // 3. Mudar status do agendamento para "Concluido" (para sumir da tela de pendentes)
+                // Nota: O SheetDB não deleta fácil por índice, então vamos apenas mudar o status
+                await fetch(`${API_AGENDAMENTO}/cliente_email/${email}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "status": "Concluido" })
+                });
+
+                alert("Sucesso! Saldo atualizado e agendamento concluído.");
+                carregarAgendamentos();
+            }
+        } catch (e) {
+            alert("Erro no processo de confirmação.");
+        }
+    }
+
+    async function removerAgendamento(index) {
+        if (!confirm("Deseja remover esse agendamento da lista? (Isso não dará score)")) return;
+        // Lógica de remoção simples via status
+        alert("Função de remoção: Altere o status na planilha para 'Cancelado'.");
+    }
+
+    // Iniciar carregando
+    carregarAgendamentos();
+</script>
+</body>
+</html>
