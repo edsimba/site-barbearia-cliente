@@ -34,7 +34,6 @@
 
         h2 { font-weight: 700; margin-bottom: 20px; color: #222; }
 
-        /* CAMPOS COM CORES DIFERENTES DO FUNDO */
         input, select { 
             width: 100%; 
             padding: 14px; 
@@ -46,6 +45,7 @@
             font-size: 15px;
             transition: 0.3s;
             outline: none;
+            display: block;
         }
 
         input:focus, select:focus {
@@ -62,10 +62,10 @@
             margin-top: 15px;
         }
 
-        /* ESTILO PARA HORÁRIO OCUPADO */
+        /* ESTILO PARA HORÁRIO OCUPADO DENTRO DO SELECT */
         .hora-ocupada {
-            background-color: var(--danger-bg) !important;
             color: var(--danger-text) !important;
+            background-color: var(--danger-bg) !important;
             font-weight: bold;
         }
 
@@ -76,7 +76,7 @@
         }
         
         .score-card h1 { margin: 5px 0; font-size: 35px; color: #fff; }
-        .score-card p#nome-display { color: var(--primary); font-weight: 600; margin-top: 5px; }
+        .score-card p#nome-display { color: var(--primary); font-weight: 600; margin-top: 5px; font-size: 16px; }
 
         .hidden { display: none !important; }
 
@@ -111,15 +111,18 @@
 
     <div id="tela-painel" class="hidden">
         <div class="score-card">
-            <p style="color:#eee; font-size:12px; text-transform:uppercase;">Saldo Disponível</p>
+            <p style="color:#eee; font-size:12px; text-transform:uppercase; margin:0;">Saldo Disponível</p>
             <h1 id="saldo-texto">R$ 0,00</h1>
-            <p id="nome-display"></p> </div>
+            <p id="nome-display"></p>
+        </div>
 
         <div id="area-agendamento">
+            <label style="font-size: 12px; color: #888; text-align: left; display: block; margin-left: 5px;">Data do atendimento:</label>
             <select id="select-domingo" onchange="bloquearHorariosOcupados()">
                 <option value="">Selecione o Domingo</option>
             </select>
 
+            <label style="font-size: 12px; color: #888; text-align: left; display: block; margin-left: 5px;">Serviço desejado:</label>
             <select id="select-servico">
                 <option value="">Escolha o serviço</option>
                 <option value="Social|20|0.05">Social - R$ 20,00 (+5¢)</option>
@@ -136,6 +139,7 @@
                 <option value="Tintura|30|0.10">Tintura - R$ 30,00 (+10¢)</option>
             </select>
 
+            <label style="font-size: 12px; color: #888; text-align: left; display: block; margin-left: 5px;">Horário disponível:</label>
             <select id="select-horario">
                 <option value="">Escolha o horário</option>
                 <option value="10:00 Hrs">10:00 Hrs</option>
@@ -146,25 +150,26 @@
                 <option value="17:50 Hrs">17:50 Hrs</option>
             </select>
 
-            <button onclick="agendarServico()" id="btn-agendar">Agendar Agora</button>
+            <button onclick="agendarServico()" id="btn-agendar">Finalizar Agendamento</button>
         </div>
 
         <div id="nota-fiscal" class="hidden nota-fiscal">
-            <h3 style="text-align:center; color:var(--primary);">RECIBO</h3>
+            <h3 style="text-align:center; color:var(--primary); margin-top:0;">AGENDADO COM SUCESSO</h3>
             <p><strong>DATA:</strong> <span id="nota-data"></span></p>
             <p><strong>HORA:</strong> <span id="nota-hora"></span></p>
             <p><strong>SERVIÇO:</strong> <span id="nota-serv"></span></p>
             <p><strong>VALOR:</strong> R$ <span id="nota-valor"></span></p>
+            <p style="font-size: 10px; color: #999; text-align: center; border-top: 1px dashed #ddd; pt-10px;">Apresente este recibo no domingo.</p>
         </div>
 
-        <button onclick="location.reload()" style="background:none; color:#aaa; font-size:12px; border:1px solid #ddd;">Sair</button>
+        <button onclick="location.reload()" style="background:none; color:#aaa; font-size:12px; border:1px solid #ddd; margin-top: 20px;">Sair da conta</button>
     </div>
 </div>
 
 <script>
     const API_CADASTRO = "https://sheetdb.io/api/v1/i2no77emc4yng";
     const API_AGENDAMENTO = "https://sheetdb.io/api/v1/izye8xzdqeub5";
-    let NOME_SALVO = "";
+    let USUARIO_NOME = "";
 
     async function logar() {
         const email = document.getElementById('login-email').value;
@@ -174,44 +179,52 @@
             const data = await res.json();
             if (data.length > 0) {
                 const user = data[0];
-                NOME_SALVO = user.nome; 
-                document.getElementById('nome-display').innerText = "Cliente: " + NOME_SALVO;
+                USUARIO_NOME = user.nome; 
+                document.getElementById('nome-display').innerText = "Cliente: " + USUARIO_NOME;
                 document.getElementById('saldo-texto').innerText = "R$ " + parseFloat(user.saldo).toFixed(2).replace('.', ',');
                 document.getElementById('tela-login').classList.add('hidden');
                 document.getElementById('tela-painel').classList.remove('hidden');
                 carregarDomingos();
                 verificarAgendamentoAtivo(email);
-            } else { alert("Dados incorretos!"); }
-        } catch (e) { alert("Erro de conexão."); }
+            } else { alert("E-mail ou senha incorretos!"); }
+        } catch (e) { alert("Erro ao conectar."); }
     }
 
     async function bloquearHorariosOcupados() {
         const dataEscolhida = document.getElementById('select-domingo').value;
         const selectHora = document.getElementById('select-horario');
+        
         if(!dataEscolhida) return;
 
-        // Resetar estilos
-        for(let opt of selectHora.options) {
+        // Limpar estados mantendo o primeiro item (o nome do campo)
+        for(let i = 0; i < selectHora.options.length; i++) {
+            let opt = selectHora.options[i];
+            if(opt.value === "") continue; // Não mexe no "Escolha o horário"
+            
             opt.disabled = false;
             opt.text = opt.value;
-            opt.className = "";
+            opt.style.backgroundColor = "";
+            opt.style.color = "";
         }
 
         try {
             const res = await fetch(`${API_AGENDAMENTO}/search?data_domingo=${dataEscolhida}`);
             const ocupados = await res.json();
+
             ocupados.forEach(ag => {
                 if(ag.status !== "Cancelado") {
-                    for(let opt of selectHora.options) {
+                    for(let i = 0; i < selectHora.options.length; i++) {
+                        let opt = selectHora.options[i];
                         if(opt.value === ag.horario) {
                             opt.disabled = true;
                             opt.text = ag.horario + " (OCUPADO)";
-                            opt.className = "hora-ocupada"; // VERMELHO AQUI
+                            opt.style.backgroundColor = "#ffe5e5"; // Vermelho Suave
+                            opt.style.color = "#d63031"; // Vermelho Texto
                         }
                     }
                 }
             });
-        } catch(e) {}
+        } catch(e) { console.log("Erro ao buscar ocupados"); }
     }
 
     function carregarDomingos() {
@@ -235,7 +248,7 @@
         const serv = document.getElementById('select-servico').value;
         const hora = document.getElementById('select-horario').value;
         const dataD = document.getElementById('select-domingo').value;
-        if(!serv || !hora || !dataD) return alert("Preencha tudo!");
+        if(!serv || !hora || !dataD) return alert("Escolha data, serviço e horário!");
         
         const [nomeS, valorS, scoreS] = serv.split('|');
         const email = document.getElementById('login-email').value;
@@ -273,7 +286,6 @@
         if(data.length > 0) exibirNota(data[0]);
     }
 
-    // Cadastro e Máscara permanecem...
     function irParaCadastro() { document.getElementById('tela-login').classList.add('hidden'); document.getElementById('tela-cadastro').classList.remove('hidden'); }
     function irParaLogin() { document.getElementById('tela-cadastro').classList.add('hidden'); document.getElementById('tela-login').classList.remove('hidden'); }
     
@@ -293,7 +305,7 @@
         const email = document.getElementById('cad-email').value;
         const senha = document.getElementById('cad-senha').value;
         const whatsapp = document.getElementById('cad-whatsapp').value;
-        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha tudo corretamente!");
+        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha todos os campos corretamente!");
         try {
             await fetch(API_CADASTRO, {
                 method: 'POST',
