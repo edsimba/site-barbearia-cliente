@@ -7,7 +7,7 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
         .box { background: #1e1e1e; padding: 25px; border-radius: 12px; max-width: 400px; margin: auto; border: 1px solid #333; }
-        input, button, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; box-sizing: border-box; font-size: 15px; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; box-sizing: border-box; font-size: 15px; }
         input { background: #2b2b2b; color: white; }
         button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; border: none; }
         .hidden { display: none !important; }
@@ -33,13 +33,6 @@
         <input type="email" id="cad-email" placeholder="E-mail">
         <input type="password" id="cad-senha" placeholder="Senha">
         <input type="tel" id="cad-whatsapp" placeholder="WhatsApp (DDD) 90000-0000" maxlength="15">
-        <select id="cad-operadora">
-            <option value="">Selecione sua Operadora</option>
-            <option value="Vivo">Vivo</option>
-            <option value="Tim">Tim</option>
-            <option value="Claro">Claro</option>
-            <option value="Oi">Oi</option>
-        </select>
         <button onclick="finalizarCadastro()">CRIAR MINHA CONTA</button>
         <p onclick="irParaLogin()" style="cursor:pointer; color: #aaa; font-size: 14px;">Voltar</p>
     </div>
@@ -54,16 +47,17 @@
 </div>
 
 <script>
+    // LEMBRE-SE DE COLOCAR SUA URL DO SHEETDB
     const API_URL = "SUA_URL_DO_SHEETDB_AQUI";
 
-    // MÁSCARA PARA O WHATSAPP (DDD) 00000-0000
+    // MÁSCARA CORRIGIDA: SÓ APARECE SE TIVER NÚMERO
     const inputTel = document.getElementById('cad-whatsapp');
-    inputTel.addEventListener('keyup', (e) => {
+    inputTel.addEventListener('input', (e) => {
         let v = e.target.value.replace(/\D/g, "");
-        v = v.replace(/^(\2)(\d)/g, "($1) $2");
-        v = v.replace(/(\d)(\d{4})$/, "$1-$2");
-        if (v.length > 2 && v[0] !== "(") {
-            v = "(" + v.substring(0, 2) + ") " + v.substring(2);
+        if (v.length > 0) {
+            v = "(" + v;
+            if (v.length > 3) v = v.slice(0, 3) + ") " + v.slice(3);
+            if (v.length > 10) v = v.slice(0, 10) + "-" + v.slice(10);
         }
         e.target.value = v;
     });
@@ -82,7 +76,7 @@
             const data = await response.json();
             if (data.length > 0) {
                 document.getElementById('nome-cliente').innerText = data[0].nome;
-                document.getElementById('saldo-texto').innerText = parseFloat(data[0].saldo).toFixed(2);
+                document.getElementById('saldo-texto').innerText = parseFloat(data[0].saldo).toFixed(2).replace('.', ',');
                 document.getElementById('tela-login').classList.add('hidden');
                 document.getElementById('tela-painel').classList.remove('hidden');
             } else { status.innerText = "Dados incorretos!"; }
@@ -94,14 +88,13 @@
         const email = document.getElementById('cad-email').value;
         const senha = document.getElementById('cad-senha').value;
         const whatsapp = document.getElementById('cad-whatsapp').value;
-        const operadora = document.getElementById('cad-operadora').value;
 
-        // VALIDAÇÃO OBRIGATÓRIA DE DDD (Mínimo 14 caracteres: (89) 91234-5678)
+        // VALIDAÇÃO OBRIGATÓRIA DE NO MÍNIMO 14 CARACTERES
         if(whatsapp.length < 14) {
-            return alert("Por favor, coloque o número completo com o DDD!");
+            return alert("O número deve ter o DDD e o 9 inicial! Ex: (89) 91234-5678");
         }
 
-        if(!nome || !email || !senha || !operadora) return alert("Preencha todos os campos!");
+        if(!nome || !email || !senha) return alert("Preencha todos os campos!");
 
         try {
             const check = await fetch(`${API_URL}/search?email=${email}`);
@@ -111,12 +104,18 @@
             await fetch(API_URL, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ "nome": nome, "email": email, "senha": senha, "whatsapp": whatsapp, "operadora": operadora, "saldo": 0 })
+                body: JSON.stringify({ 
+                    "nome": nome, 
+                    "email": email, 
+                    "senha": senha, 
+                    "whatsapp": whatsapp, 
+                    "saldo": 0 
+                })
             });
 
-            alert("Conta criada! Faça login.");
+            alert("Conta criada com sucesso! Agora faça seu login.");
             irParaLogin();
-        } catch (err) { alert("Erro ao salvar."); }
+        } catch (err) { alert("Erro ao salvar cadastro."); }
     }
 </script>
 </body>
