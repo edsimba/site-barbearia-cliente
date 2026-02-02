@@ -13,6 +13,7 @@
             --text-main: #333;
             --danger-bg: #ffe5e5;
             --danger-text: #d63031;
+            --success-btn: #27ae60;
         }
 
         body { 
@@ -48,10 +49,7 @@
             display: block;
         }
 
-        input:focus, select:focus {
-            border-color: var(--primary);
-            background-color: #fff;
-        }
+        input:focus, select:focus { border-color: var(--primary); background-color: #fff; }
 
         button { 
             width: 100%; padding: 16px; 
@@ -66,10 +64,32 @@
             background: #1a1a1a; 
             padding: 25px; border-radius: 18px; 
             margin-bottom: 20px; color: var(--primary);
+            position: relative;
+            transition: 0.5s;
+        }
+
+        /* ESTADO QUANDO SELECIONA USAR SALDO */
+        .score-card.active-resgate {
+            background: #002d15;
+            border: 2px solid var(--success-btn);
         }
         
         .score-card h1 { margin: 5px 0; font-size: 35px; color: #fff; }
         .score-card p#nome-display { color: var(--primary); font-weight: 600; margin-top: 5px; font-size: 16px; }
+
+        .btn-usar-saldo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
 
         .hidden { display: none !important; }
 
@@ -103,36 +123,35 @@
     </div>
 
     <div id="tela-painel" class="hidden">
-        <div class="score-card">
+        <div class="score-card" id="card-saldo">
+            <button class="btn-usar-saldo" id="btn-resgate" onclick="toggleResgate()">USAR SCORE</button>
             <p style="color:#eee; font-size:12px; text-transform:uppercase; margin:0;">Saldo Disponível</p>
             <h1 id="saldo-texto">R$ 0,00</h1>
             <p id="nome-display"></p>
         </div>
 
         <div id="area-agendamento">
-            <label style="font-size: 12px; color: #888; margin-left: 5px;">Data do atendimento:</label>
+            <label style="font-size: 12px; color: #888;">Data do atendimento:</label>
             <select id="select-domingo" onchange="bloquearHorariosOcupados()">
                 <option value="">Selecione o Domingo</option>
             </select>
 
-            <label style="font-size: 12px; color: #888; margin-left: 5px;">Serviço desejado:</label>
+            <label style="font-size: 12px; color: #888;">Serviço desejado:</label>
             <select id="select-servico">
                 <option value="">Escolha o serviço</option>
                 <option value="Social|20|0.05">Social - R$ 20,00 (+5¢)</option>
                 <option value="Degradê|25|0.07">Degradê - R$ 25,00 (+7¢)</option>
                 <option value="Social + Barba|30|0.10">Social + Barba - R$ 30,00 (+10¢)</option>
-                <option value="Social + Sobrancelha|30|0.10">Social + Sobrancelha - R$ 30,00 (+10¢)</option>
-                <option value="Social + Barba + Sobrancelha|35|0.13">Combo Completo - R$ 35,00 (+13¢)</option>
+                <option value="Combo Completo|35|0.13">Combo Completo - R$ 35,00 (+13¢)</option>
                 <option value="Degradê + Barba|35|0.13">Degradê + Barba - R$ 35,00 (+13¢)</option>
                 <option value="Barba|10|0.02">Barba - R$ 10,00 (+2¢)</option>
                 <option value="Sobrancelha|10|0.02">Sobrancelha - R$ 10,00 (+2¢)</option>
                 <option value="Pezinho|10|0.02">Pezinho - R$ 10,00 (+2¢)</option>
-                <option value="Barba + Sobrancelha|15|0.03">Barba + Sobrancelha - R$ 15,00 (+3¢)</option>
                 <option value="Luzes|60|0.30">Luzes - R$ 60,00 (+30¢)</option>
                 <option value="Tintura|30|0.10">Tintura - R$ 30,00 (+10¢)</option>
             </select>
 
-            <label style="font-size: 12px; color: #888; margin-left: 5px;">Horário disponível:</label>
+            <label style="font-size: 12px; color: #888;">Horário disponível:</label>
             <select id="select-horario">
                 <option value="">Escolha o horário</option>
                 <option value="10:00 Hrs">10:00 Hrs</option>
@@ -148,6 +167,7 @@
 
         <div id="nota-fiscal" class="hidden nota-fiscal">
             <h3 style="text-align:center; color:var(--primary); margin-top:0;">AGENDADO COM SUCESSO</h3>
+            <p id="aviso-resgate" style="color: var(--success-btn); font-weight: bold; font-size: 13px; text-align: center; display:none;">✅ VOCÊ SOLICITOU O USO DO SCORE!</p>
             <p><strong>DATA:</strong> <span id="nota-data"></span></p>
             <p><strong>HORA:</strong> <span id="nota-hora"></span></p>
             <p><strong>SERVIÇO:</strong> <span id="nota-serv"></span></p>
@@ -161,7 +181,8 @@
 <script>
     const API_CADASTRO = "https://sheetdb.io/api/v1/i2no77emc4yng";
     const API_AGENDAMENTO = "https://sheetdb.io/api/v1/izye8xzdqeub5";
-    let USUARIO_NOME = "";
+    let SALDO_ATUAL = 0;
+    let QUER_USAR_SCORE = "Não";
 
     async function logar() {
         const email = document.getElementById('login-email').value;
@@ -171,9 +192,9 @@
             const data = await res.json();
             if (data.length > 0) {
                 const user = data[0];
-                USUARIO_NOME = user.nome; 
-                document.getElementById('nome-display').innerText = "Cliente: " + USUARIO_NOME;
-                document.getElementById('saldo-texto').innerText = "R$ " + parseFloat(user.saldo).toFixed(2).replace('.', ',');
+                SALDO_ATUAL = parseFloat(user.saldo) || 0;
+                document.getElementById('nome-display').innerText = "Cliente: " + user.nome;
+                document.getElementById('saldo-texto').innerText = "R$ " + SALDO_ATUAL.toFixed(2).replace('.', ',');
                 document.getElementById('tela-login').classList.add('hidden');
                 document.getElementById('tela-painel').classList.remove('hidden');
                 carregarDomingos();
@@ -182,45 +203,89 @@
         } catch (e) { alert("Erro ao conectar."); }
     }
 
+    function toggleResgate() {
+        if (SALDO_ATUAL < 1.00) {
+            alert("Sua pontuação é insuficiente. O resgate só é permitido a partir de R$ 1,00.");
+            return;
+        }
+
+        const card = document.getElementById('card-saldo');
+        const btn = document.getElementById('btn-resgate');
+
+        if (QUER_USAR_SCORE === "Não") {
+            QUER_USAR_SCORE = "Sim";
+            card.classList.add('active-resgate');
+            btn.innerText = "CANCELAR USO";
+            btn.style.background = "#c0392b";
+            alert("Score ativado! O desconto será aplicado pelo barbeiro no momento do pagamento.");
+        } else {
+            QUER_USAR_SCORE = "Não";
+            card.classList.remove('active-resgate');
+            btn.innerText = "USAR SCORE";
+            btn.style.background = "#b08d57";
+        }
+    }
+
+    async function agendarServico() {
+        const serv = document.getElementById('select-servico').value;
+        const hora = document.getElementById('select-horario').value;
+        const dataD = document.getElementById('select-domingo').value;
+        if(!serv || !hora || !dataD) return alert("Preencha tudo!");
+
+        const [nomeS, valorS, scoreS] = serv.split('|');
+        const email = document.getElementById('login-email').value;
+
+        const dados = {
+            "cliente_email": email,
+            "servico": nomeS,
+            "horario": hora,
+            "valor_servico": valorS,
+            "score_pendente": scoreS,
+            "status": "Pendente",
+            "data_domingo": dataD,
+            "usar_score": QUER_USAR_SCORE // NOVA COLUNA
+        };
+
+        try {
+            await fetch(API_AGENDAMENTO, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(dados)
+            });
+            if(QUER_USAR_SCORE === "Sim") document.getElementById('aviso-resgate').style.display = "block";
+            exibirNota({data_domingo: dataD, horario: hora, servico: nomeS, valor_servico: valorS});
+        } catch (e) { alert("Erro ao agendar."); }
+    }
+
+    // Funções de bloqueio de horário e carregar domingos permanecem iguais às anteriores
     async function bloquearHorariosOcupados() {
         const dataEscolhida = document.getElementById('select-domingo').value;
         const selectHora = document.getElementById('select-horario');
         if(!dataEscolhida) return;
-
         const agora = new Date();
         const diaHoje = String(agora.getDate()).padStart(2, '0') + "/" + String(agora.getMonth() + 1).padStart(2, '0') + "/" + agora.getFullYear();
         const horaAtual = agora.getHours();
         const minAtual = agora.getMinutes();
-
         for(let i = 0; i < selectHora.options.length; i++) {
             let opt = selectHora.options[i];
             if(opt.value === "") continue;
-            opt.disabled = false;
-            opt.text = opt.value;
-            opt.style.backgroundColor = "";
-            opt.style.color = "";
-
+            opt.disabled = false; opt.text = opt.value; opt.style.backgroundColor = ""; opt.style.color = "";
             if(dataEscolhida === diaHoje) {
                 let [h, m] = opt.value.split(':');
                 if(parseInt(h) < horaAtual || (parseInt(h) === horaAtual && parseInt(m) <= minAtual)) {
-                    opt.disabled = true;
-                    opt.text = opt.value + " (Encerrado)";
+                    opt.disabled = true; opt.text = opt.value + " (Encerrado)";
                 }
             }
         }
-
         try {
-            // SÓ BLOQUEIA SE O STATUS FOR 'Pendente'
             const res = await fetch(`${API_AGENDAMENTO}/search?data_domingo=${dataEscolhida}&status=Pendente`);
             const ocupados = await res.json();
             ocupados.forEach(ag => {
                 for(let i = 0; i < selectHora.options.length; i++) {
                     let opt = selectHora.options[i];
                     if(opt.value === ag.horario) {
-                        opt.disabled = true;
-                        opt.text = ag.horario + " (OCUPADO)";
-                        opt.style.backgroundColor = "#ffe5e5";
-                        opt.style.color = "#d63031";
+                        opt.disabled = true; opt.text = ag.horario + " (OCUPADO)";
+                        opt.style.backgroundColor = "#ffe5e5"; opt.style.color = "#d63031";
                     }
                 }
             });
@@ -246,23 +311,6 @@
         select.add(new Option(dataFormatada, dataFormatada));
     }
 
-    async function agendarServico() {
-        const serv = document.getElementById('select-servico').value;
-        const hora = document.getElementById('select-horario').value;
-        const dataD = document.getElementById('select-domingo').value;
-        if(!serv || !hora || !dataD) return alert("Escolha data, serviço e horário!");
-        const [nomeS, valorS, scoreS] = serv.split('|');
-        const email = document.getElementById('login-email').value;
-        try {
-            await fetch(API_AGENDAMENTO, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ "cliente_email": email, "servico": nomeS, "horario": hora, "valor_servico": valorS, "score_pendente": scoreS, "status": "Pendente", "data_domingo": dataD })
-            });
-            exibirNota({data_domingo: dataD, horario: hora, servico: nomeS, valor_servico: valorS});
-        } catch (e) { alert("Erro ao agendar."); }
-    }
-
     function exibirNota(dados) {
         document.getElementById('area-agendamento').classList.add('hidden');
         document.getElementById('nota-fiscal').classList.remove('hidden');
@@ -275,19 +323,15 @@
     async function verificarAgendamentoAtivo(email) {
         const res = await fetch(`${API_AGENDAMENTO}/search?cliente_email=${email}&status=Pendente`);
         const data = await res.json();
-        if(data.length > 0) exibirNota(data[0]);
+        if(data.length > 0) {
+            if(data[0].usar_score === "Sim") document.getElementById('aviso-resgate').style.display = "block";
+            exibirNota(data[0]);
+        }
     }
 
     function irParaCadastro() { document.getElementById('tela-login').classList.add('hidden'); document.getElementById('tela-cadastro').classList.remove('hidden'); }
     function irParaLogin() { document.getElementById('tela-cadastro').classList.add('hidden'); document.getElementById('tela-login').classList.remove('hidden'); }
     
-    const inputTel = document.getElementById('cad-whatsapp');
-    inputTel.addEventListener('input', (e) => {
-        let v = e.target.value.replace(/\D/g, "");
-        if (v.length > 0) { v = "(" + v; if (v.length > 3) v = v.slice(0, 3) + ") " + v.slice(3); if (v.length > 10) v = v.slice(0, 10) + "-" + v.slice(10); }
-        e.target.value = v;
-    });
-
     async function finalizarCadastro() {
         const nome = document.getElementById('cad-nome').value;
         const email = document.getElementById('cad-email').value;
