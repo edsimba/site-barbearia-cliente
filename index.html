@@ -187,8 +187,17 @@
 
     // MÁSCARA AUTOMÁTICA WHATSAPP
     document.getElementById('cad-whatsapp').addEventListener('input', (e) => {
-        let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
-        e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+        let v = e.target.value.replace(/\D/g, '');
+        if (v.length > 11) v = v.substring(0, 11);
+        if (v.length > 10) {
+            e.target.value = "(" + v.substring(0, 2) + ") " + v.substring(2, 7) + "-" + v.substring(7);
+        } else if (v.length > 6) {
+            e.target.value = "(" + v.substring(0, 2) + ") " + v.substring(2, 6) + "-" + v.substring(6);
+        } else if (v.length > 2) {
+            e.target.value = "(" + v.substring(0, 2) + ") " + v.substring(2);
+        } else {
+            e.target.value = v;
+        }
     });
 
     async function logar() {
@@ -223,10 +232,13 @@
         }
 
         try {
-            // Busca agendamentos PENDENTES para a DATA escolhida
-            const res = await fetch(`${API_AGENDAMENTO}/search?data_domingo=${dataEscolhida}&status=Pendente`);
-            const ocupados = await res.json();
+            // Busca agendamentos PENDENTES
+            const res = await fetch(`${API_AGENDAMENTO}/search?status=Pendente`);
+            const agendamentos = await res.json();
             
+            // Filtra manualmente para evitar erro de formato do SheetDB
+            const ocupados = agendamentos.filter(ag => String(ag.data_domingo) === String(dataEscolhida));
+
             ocupados.forEach(ag => {
                 for(let i = 0; i < selectHora.options.length; i++) {
                     let opt = selectHora.options[i];
@@ -238,12 +250,12 @@
                     }
                 }
             });
-        } catch(e) { console.error("Erro ao verificar horários."); }
+        } catch(e) { console.error("Erro ao verificar."); }
     }
 
     function toggleResgate() {
         if (SALDO_ATUAL < 1.00) {
-            alert("O uso do Score só é permitido para saldos a partir de R$ 1,00.");
+            alert("Mínimo de R$ 1,00 para resgate.");
             return;
         }
         const card = document.getElementById('card-saldo');
@@ -277,7 +289,7 @@
             "valor_servico": valorS,
             "score_pendente": scoreS,
             "status": "Pendente",
-            "data_domingo": dataD,
+            "data_domingo": dataD, // SheetDB aceita o valor
             "usar_score": QUER_USAR_SCORE
         };
 
@@ -342,7 +354,7 @@
             await fetch(API_CADASTRO, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ "nome": nome, "email": email, "senha": senha, "whatsapp": whatsapp, "saldo": 0 })
+                body: JSON.stringify({ "nome": nome, "email": email, "senha": senha, "whatsapp": whatsapp, "saldo": "0" })
             });
             alert("Cadastro realizado!"); irParaLogin();
         } catch (e) { alert("Erro ao cadastrar."); }
