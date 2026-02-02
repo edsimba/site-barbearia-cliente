@@ -8,18 +8,12 @@
         body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: white; padding: 20px; }
         .container { max-width: 600px; margin: auto; }
         .card-agendamento { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: left; position: relative; border-left: 5px solid #e67e22; }
-        
-        /* Botões */
         .btn-confirmar { background: #27ae60; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px; }
         .btn-excluir { background: #c0392b; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 5px; width: 100%; opacity: 0.8; }
-        
-        /* Botões de Resgate */
         .btn-resgate-sim { background: #2980b9; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px; }
         .btn-resgate-nao { background: #7f8c8d; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 5px; width: 100%; }
-
         .status-badge { background: #f1c40f; color: black; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-        .resgate-badge { background: #d35400; color: white; padding: 5px; border-radius: 4px; font-size: 12px; font-weight: bold; text-align: center; margin-top: 10px; display: block; }
-        
+        .resgate-badge { background: #d35400; color: white; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; text-align: center; margin-top: 10px; display: block; border: 1px solid #ff9f43; }
         .cliente-nome { color: #e67e22; font-size: 18px; font-weight: bold; margin: 10px 0 5px 0; }
         .info-linha { font-size: 14px; margin: 3px 0; color: #ccc; }
         h2 { border-bottom: 2px solid #e67e22; padding-bottom: 10px; margin-top: 30px; }
@@ -32,7 +26,6 @@
     <h1>Painel do Barbeiro ✂️</h1>
     <button onclick="carregarAgendamentos()" style="background:#333; color:white; padding:12px; width:100%; border-radius:8px; border:1px solid #444; margin-bottom:20px; cursor:pointer; font-weight: bold;">🔄 ATUALIZAR LISTA</button>
     
-    <h2>Agendamentos Pendentes</h2>
     <div id="lista-pendentes">
         <p class="loading">Buscando agendamentos...</p>
     </div>
@@ -44,8 +37,6 @@
 
     async function carregarAgendamentos() {
         const div = document.getElementById('lista-pendentes');
-        div.innerHTML = "<p class='loading'>Carregando dados da planilha...</p>";
-
         try {
             const resAgend = await fetch(`${API_AGENDAMENTO}/search?status=Pendente`);
             const agendamentos = await resAgend.json();
@@ -53,7 +44,7 @@
             const clientes = await resClientes.json();
 
             if (agendamentos.length === 0) {
-                div.innerHTML = "<p style='color: #888;'>Nenhum agendamento pendente para hoje.</p>";
+                div.innerHTML = "<p style='color: #888;'>Nenhum agendamento pendente.</p>";
                 return;
             }
 
@@ -62,16 +53,19 @@
                 const dadosCliente = clientes.find(c => c.email === item.cliente_email);
                 const nomeExibir = dadosCliente ? dadosCliente.nome : "Cliente não encontrado";
                 const whatsExibir = dadosCliente ? dadosCliente.whatsapp : "Sem número";
-                const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo).toFixed(2) : "0.00";
+                const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo || 0).toFixed(2) : "0.00";
                 
-                // Verifica explicitamente se é "Sim"
-                const pediuResgate = item.usar_score === "Sim";
+                // VERIFICAÇÃO ROBUSTA DO CAMPO USAR_SCORE
+                const valorResgate = String(item.usar_score || "").trim();
+                const pediuResgate = (valorResgate === "Sim");
+
+                console.log(`Cliente: ${nomeExibir}, Pediu Resgate: ${valorResgate}`); // Para diagnóstico
 
                 let botoesAcao = "";
 
                 if (pediuResgate) {
                     botoesAcao = `
-                        <div class="resgate-badge">⚠️ CLIENTE QUER USAR O SALDO (R$ ${saldoAtual})</div>
+                        <div class="resgate-badge">⚠️ CLIENTE SOLICITOU USAR SCORE (Saldo: R$ ${saldoAtual})</div>
                         <button class="btn-resgate-sim" onclick="permitirResgate('${item.cliente_email}', '${nomeExibir}')">
                             ✅ PERMITIR (ZERAR SALDO E CONCLUIR)
                         </button>
@@ -89,101 +83,78 @@
 
                 div.innerHTML += `
                     <div class="card-agendamento">
-                        <span class="status-badge">Aguardando</span>
+                        <span class="status-badge">Pendente</span>
                         <div class="cliente-nome">${nomeExibir}</div>
                         <div class="info-linha">📱 WhatsApp: ${whatsExibir}</div>
                         <div class="info-linha">💇‍♂️ Serviço: <strong>${item.servico}</strong></div>
                         <div class="info-linha">💰 Valor: R$ ${item.valor_servico}</div>
                         <div class="info-linha">📅 Data: ${item.data_domingo} às ${item.horario}</div>
                         <div class="info-linha" style="color: #27ae60; font-weight: bold; margin-top: 10px;">
-                            ⭐ Score a liberar: R$ ${item.score_pendente.replace('.', ',')}
+                            ⭐ Score a liberar: R$ ${item.score_pendente}
                         </div>
-                        
                         ${botoesAcao}
-
                         <button class="btn-excluir" onclick="cancelarAgendamento('${item.cliente_email}', '${item.horario}')">CANCELAR AGENDAMENTO</button>
                     </div>
                 `;
             });
         } catch (e) {
-            div.innerHTML = "<p style='color: red;'>Erro ao conectar. Verifique a internet.</p>";
+            div.innerHTML = "<p style='color: red;'>Erro ao carregar.</p>";
         }
     }
 
-    // --- FUNÇÃO PADRÃO: SOMA O SCORE (E USADA QUANDO NEGA O RESGATE) ---
-    async function confirmarPagamento(email, score, nome) {
-        if (!confirm(`Confirmar pagamento de ${nome}? \nO score será ADICIONADO ao saldo.`)) return;
-
-        try {
-            const encodedEmail = encodeURIComponent(email); // Proteção para emails com caracteres especiais
-            const resUser = await fetch(`${API_CADASTRO}/search?email=${encodedEmail}`);
-            const user = await resUser.json();
-
-            if (user.length > 0) {
-                const saldoAntigo = parseFloat(user[0].saldo) || 0;
-                const bonus = parseFloat(score) || 0;
-                const novoSaldo = (saldoAntigo + bonus).toFixed(2);
-
-                await fetch(`${API_CADASTRO}/email/${encodedEmail}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "saldo": novoSaldo })
-                });
-
-                await fetch(`${API_AGENDAMENTO}/cliente_email/${encodedEmail}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "status": "Concluido" })
-                });
-
-                alert("Pagamento confirmado! Score somado.");
-                carregarAgendamentos();
-            }
-        } catch (e) { alert("Erro ao processar."); }
-    }
-
-    // --- FUNÇÃO NOVA: ZERA O SALDO (RESGATE) ---
     async function permitirResgate(email, nome) {
-        if (!confirm(`ATENÇÃO!\nVocê vai autorizar o uso do saldo de ${nome}.\n\nO saldo do cliente será ZERADO (R$ 0,00).`)) return;
-
+        if (!confirm(`Autorizar resgate de ${nome}? O saldo será ZERADO.`)) return;
         try {
-            const encodedEmail = encodeURIComponent(email); // Proteção vital
-
-            // Zera o saldo do cliente (Enviando "0" como string para garantir)
-            await fetch(`${API_CADASTRO}/email/${encodedEmail}`, {
+            await fetch(`${API_CADASTRO}/email/${encodeURIComponent(email)}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "saldo": "0" }) 
+                body: JSON.stringify({ "saldo": "0" })
             });
-
-            // Conclui o agendamento
-            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodedEmail}`, {
+            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodeURIComponent(email)}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ "status": "Concluido" })
             });
-
-            alert("Resgate autorizado! O saldo foi zerado.");
+            alert("Resgate realizado!");
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao processar o resgate."); }
+        } catch (e) { alert("Erro."); }
+    }
+
+    async function confirmarPagamento(email, score, nome) {
+        if (!confirm(`Confirmar pagamento de ${nome}?`)) return;
+        try {
+            const resUser = await fetch(`${API_CADASTRO}/search?email=${encodeURIComponent(email)}`);
+            const user = await resUser.json();
+            const novoSaldo = (parseFloat(user[0].saldo || 0) + parseFloat(score)).toFixed(2);
+
+            await fetch(`${API_CADASTRO}/email/${encodeURIComponent(email)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ "saldo": novoSaldo })
+            });
+            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodeURIComponent(email)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ "status": "Concluido" })
+            });
+            alert("Sucesso!");
+            carregarAgendamentos();
+        } catch (e) { alert("Erro."); }
     }
 
     async function cancelarAgendamento(email, hora) {
-        if (!confirm("Cancelar agendamento?")) return;
+        if (!confirm("Cancelar?")) return;
         try {
-            const encodedEmail = encodeURIComponent(email);
-            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodedEmail}`, {
+            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodeURIComponent(email)}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ "status": "Cancelado" })
             });
-            alert("Agendamento cancelado.");
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao cancelar."); }
+        } catch (e) {}
     }
 
     carregarAgendamentos();
-    setInterval(carregarAgendamentos, 30000);
 </script>
 </body>
 </html>
