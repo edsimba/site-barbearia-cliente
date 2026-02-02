@@ -5,86 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Administrativo - Barbearia</title>
     <style>
-        body { font-family: 'Poppins', sans-serif; background: #f4f7f6; padding: 20px; }
-        .container { max-width: 800px; margin: auto; }
+        :root {
+            --primary: #b08d57;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --danger: #d63031;
+            --success: #27ae60;
+        }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); padding: 20px; }
+        .container { max-width: 600px; margin: auto; }
         h2 { text-align: center; color: #333; }
-        
-        .card { 
-            background: white; padding: 20px; border-radius: 15px; 
-            margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            border-left: 5px solid #b08d57;
+        .agendamento-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
         }
-
-        .card.solicitou-resgate { border-left-color: #27ae60; background: #f0fff4; }
-
-        .info { margin-bottom: 10px; }
-        .info b { color: #555; }
-        
-        .badge-resgate { 
-            background: #27ae60; color: white; padding: 5px 10px; 
-            border-radius: 5px; font-size: 12px; font-weight: bold;
-            display: inline-block; margin-bottom: 10px;
+        .info-resgate {
+            background: #eafaf1;
+            color: var(--success);
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+            border: 1px solid var(--success);
         }
-
-        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-        
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         button { 
-            padding: 10px 15px; border: none; border-radius: 8px; 
-            cursor: pointer; font-weight: bold; font-size: 12px;
-            text-transform: uppercase;
+            flex: 1; padding: 12px; border: none; border-radius: 8px; 
+            font-weight: bold; cursor: pointer; color: white; transition: 0.3s;
         }
-
-        .btn-confirmar { background: #b08d57; color: white; }
-        .btn-permitir { background: #27ae60; color: white; }
-        .btn-negar { background: #e67e22; color: white; }
-        .btn-cancelar { background: #e74c3c; color: white; }
-
-        .loading { text-align: center; color: #888; }
+        .btn-confirmar { background: var(--success); }
+        .btn-cancelar { background: var(--danger); }
+        .btn-negar { background: #636e72; font-size: 11px; }
+        .btn-confirmar:hover { background: #219150; }
+        .btn-cancelar:hover { background: #b32525; }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <div class="container">
     <h2>Agendamentos Pendentes</h2>
-    <div id="lista-agendamentos" class="loading">Carregando agendamentos...</div>
+    <div id="lista-agendamentos">Carregando...</div>
 </div>
 
 <script>
-    const API_AGENDAMENTO = "https://sheetdb.io/api/v1/izye8xzdqeub5";
     const API_CADASTRO = "https://sheetdb.io/api/v1/i2no77emc4yng";
+    const API_AGENDAMENTO = "https://sheetdb.io/api/v1/izye8xzdqeub5";
 
     async function carregarAgendamentos() {
         try {
             const res = await fetch(`${API_AGENDAMENTO}/search?status=Pendente`);
-            const dados = await res.json();
+            const data = await res.json();
             const lista = document.getElementById('lista-agendamentos');
             lista.innerHTML = "";
 
-            if (dados.length === 0) {
+            if (data.length === 0) {
                 lista.innerHTML = "<p style='text-align:center;'>Nenhum agendamento pendente.</p>";
                 return;
             }
 
-            dados.forEach(ag => {
-                const solicitouResgate = ag.usar_score === "Sim";
+            data.forEach(ag => {
                 const card = document.createElement('div');
-                card.className = `card ${solicitouResgate ? 'solicitou-resgate' : ''}`;
+                card.className = "agendamento-card";
+                
+                // Verifica se o cliente pediu pra usar o score
+                let htmlResgate = "";
+                if (ag.usar_score === "Sim") {
+                    htmlResgate = `<div class="info-resgate">🎁 SOLICITOU RESGATE DE SCORE</div>`;
+                }
 
                 card.innerHTML = `
-                    ${solicitouResgate ? '<span class="badge-resgate">SOLICITOU RESGATE DE SCORE</span>' : ''}
-                    <div class="info"><b>Cliente:</b> ${ag.cliente_email}</div>
-                    <div class="info"><b>Serviço:</b> ${ag.servico} (${ag.data_domingo} às ${ag.horario})</div>
-                    <div class="info"><b>Valor:</b> R$ ${ag.valor_servico} | <b>Score:</b> +${ag.score_pendente}¢</div>
-                    
+                    <p><strong>Cliente:</strong> ${ag.cliente_email}</p>
+                    <p><strong>Serviço:</strong> ${ag.servico} (R$ ${ag.valor_servico})</p>
+                    <p><strong>Horário:</strong> ${ag.horario} - ${ag.data_domingo}</p>
+                    ${htmlResgate}
                     <div class="btn-group">
-                        ${solicitouResgate ? `
-                            <button class="btn-permitir" onclick="processarAgendamento('${ag.cliente_email}', '${ag.horario}', '${ag.data_domingo}', 'Concluido', true)">Permitir Resgate (Zerar Saldo)</button>
-                            <button class="btn-negar" onclick="processarAgendamento('${ag.cliente_email}', '${ag.horario}', '${ag.data_domingo}', 'Concluido', false)">Negar Resgate</button>
-                        ` : `
-                            <button class="btn-confirmar" onclick="processarAgendamento('${ag.cliente_email}', '${ag.horario}', '${ag.data_domingo}', 'Concluido', false)">Confirmar Atendimento</button>
-                        `}
-                        <button class="btn-cancelar" onclick="mudarStatus('${ag.horario}', '${ag.data_domingo}', 'Cancelado')">Cancelar</button>
+                        <button class="btn-confirmar" onclick="confirmarAgendamento('${ag.cliente_email}', '${ag.horario}', '${ag.data_domingo}', '${ag.score_pendente}', '${ag.usar_score}')">Confirmar</button>
+                        <button class="btn-cancelar" onclick="atualizarStatus('${ag.horario}', '${ag.data_domingo}', 'Cancelado')">Cancelar</button>
                     </div>
                 `;
                 lista.appendChild(card);
@@ -94,42 +96,49 @@
         }
     }
 
-    async function processarAgendamento(email, horario, data, novoStatus, deveZerarSaldo) {
-        if (!confirm("Confirmar esta ação?")) return;
-
-        try {
-            // 1. Atualiza o status do agendamento
-            await fetch(`${API_AGENDAMENTO}/horario/${horario}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "status": novoStatus, "data_domingo": data })
-            });
-
-            // 2. Se for permitido o resgate, zera o saldo do cliente
-            if (deveZerarSaldo) {
-                await fetch(`${API_CADASTRO}/email/${email}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "saldo": 0 })
-                });
-                alert("Agendamento concluído e SALDO ZERADO!");
+    async function confirmarAgendamento(email, horario, dataD, scoreGanhado, usouScore) {
+        // 1. Se o cliente usou o score, zeramos o saldo dele primeiro
+        if (usouScore === "Sim") {
+            const confirmouResgate = confirm("O cliente solicitou o uso do Score. O saldo dele será zerado. Confirmar?");
+            if (confirmouResgate) {
+                try {
+                    await fetch(`${API_CADASTRO}/email/${email}`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ "saldo": 0 })
+                    });
+                } catch (e) { alert("Erro ao zerar saldo do cliente."); return; }
             } else {
-                alert("Agendamento concluído com sucesso!");
+                return; // Cancela a operação se o barbeiro não confirmar
             }
-
-            carregarAgendamentos();
-        } catch (e) {
-            alert("Erro ao processar.");
         }
+
+        // 2. Somar o novo score ao saldo do cliente (caso ele tenha ganhado neste serviço)
+        if (parseFloat(scoreGanhado) > 0) {
+            try {
+                const resUser = await fetch(`${API_CADASTRO}/search?email=${email}`);
+                const userData = await resUser.json();
+                if (userData.length > 0) {
+                    let novoSaldo = parseFloat(userData[0].saldo) + parseFloat(scoreGanhado);
+                    await fetch(`${API_CADASTRO}/email/${email}`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ "saldo": novoSaldo })
+                    });
+                }
+            } catch (e) { console.log("Erro ao atualizar score."); }
+        }
+
+        // 3. Finalizar o agendamento
+        atualizarStatus(horario, dataD, 'Concluido');
     }
 
-    async function mudarStatus(horario, data, novoStatus) {
-        if (!confirm(`Deseja realmente mudar para ${novoStatus}?`)) return;
+    async function atualizarStatus(horario, dataD, novoStatus) {
         try {
             await fetch(`${API_AGENDAMENTO}/horario/${horario}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "status": novoStatus, "data_domingo": data })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ "status": novoStatus })
             });
             alert("Status atualizado!");
             carregarAgendamentos();
@@ -138,7 +147,7 @@
         }
     }
 
-    // Carregar ao abrir a página
+    // Inicializar
     carregarAgendamentos();
     // Atualizar a cada 30 segundos automaticamente
     setInterval(carregarAgendamentos, 30000);
