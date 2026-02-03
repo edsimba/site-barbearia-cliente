@@ -180,14 +180,14 @@
 </div>
 
 <script>
-    // CONFIGURAÇÕES SHEETSON - TROQUE OS NOMES DAS ABAS SE NECESSÁRIO
-    const API_KEY = "_RsBLM-rP066IuLJrIe2W_UeyiQfKhTsQ109gOvAo3pf7Z9fOPmH6nAlT8Q";
-    const ID_CADASTRO = "1JNGrXPbCHCWNCBQDieTOrFyhtlJUe2UP_yrGVwIjGSY";
-    const ID_AGENDAMENTO = "1pw50ZZL7Ne3twW9QXV8ejVGWZ7ydYg2okD4XbvjcBsA";
-    const NOME_ABA = "Página1"; // Verifique se na sua planilha o nome é Página1 ou outro
+    // --- CONFIGURAÇÃO NOCODB ---
+    const TOKEN = "D8NVVp7hEJE2X6cD4cdRwuhHtR9tnX3lzOT2QtnE";
+    const URL_CADASTRO = "https://app.nocodb.com/api/v2/tables/measzir7yghqdl9/records";
+    const URL_AGENDAMENTO = "https://app.nocodb.com/api/v2/tables/mvv28fo6ld6xnq9/records";
 
     let SALDO_ATUAL = 0;
     let QUER_USAR_SCORE = "Não";
+    let USUARIO_LOGADO = null;
 
     // MÁSCARA AUTOMÁTICA WHATSAPP
     document.getElementById('cad-whatsapp').addEventListener('input', (e) => {
@@ -205,14 +205,15 @@
     async function logar() {
         const email = document.getElementById('login-email').value.trim().toLowerCase();
         const senha = document.getElementById('login-senha').value;
-        const url = `https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_CADASTRO}&limit=100`;
 
         try {
-            const res = await fetch(url, { headers: { "Authorization": `Bearer ${API_KEY}` } });
+            const res = await fetch(`${URL_CADASTRO}?limit=100`, { headers: { "xc-token": TOKEN } });
             const data = await res.json();
-            const user = data.results.find(u => String(u.email).toLowerCase() === email && String(u.senha) === senha);
+            // NocoDB retorna os dados em 'list'
+            const user = data.list.find(u => String(u.email).toLowerCase() === email && String(u.senha) === senha);
             
             if (user) {
+                USUARIO_LOGADO = user;
                 SALDO_ATUAL = parseFloat(user.saldo) || 0;
                 document.getElementById('nome-display').innerText = "Cliente: " + user.nome;
                 document.getElementById('saldo-texto').innerText = "R$ " + SALDO_ATUAL.toFixed(2).replace('.', ',');
@@ -221,7 +222,7 @@
                 carregarDomingos();
                 verificarAgendamentoAtivo(email);
             } else { alert("E-mail ou senha incorretos!"); }
-        } catch (e) { alert("Erro ao carregar dados do servidor."); }
+        } catch (e) { alert("Erro ao conectar ao NocoDB."); }
     }
 
     async function bloquearHorariosOcupados() {
@@ -236,11 +237,10 @@
             opt.disabled = false; opt.text = opt.value; opt.style.color = "";
         }
 
-        const url = `https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_AGENDAMENTO}&limit=100`;
         try {
-            const res = await fetch(url, { headers: { "Authorization": `Bearer ${API_KEY}` } });
-            const json = await res.json();
-            const ocupados = json.results.filter(ag => String(ag.data_domingo) === dataEscolhida && ag.status === "Pendente");
+            const res = await fetch(`${URL_AGENDAMENTO}?limit=100`, { headers: { "xc-token": TOKEN } });
+            const data = await res.json();
+            const ocupados = data.list.filter(ag => String(ag.data_domingo) === dataEscolhida && ag.status === "Pendente");
 
             ocupados.forEach(ag => {
                 for(let i = 0; i < selectHora.options.length; i++) {
@@ -251,7 +251,7 @@
                     }
                 }
             });
-        } catch(e) { console.error("Erro ao verificar ocupação."); }
+        } catch(e) { console.error("Erro ao verificar horários."); }
     }
 
     function toggleResgate() {
@@ -278,27 +278,28 @@
         if(!serv || !hora || !dataD) return alert("Preencha todos os campos.");
 
         const [nomeS, valorS, scoreS] = serv.split('|');
-        const email = document.getElementById('login-email').value;
 
         const body = {
-            cliente_email: email,
+            cliente_email: USUARIO_LOGADO.email,
             servico: nomeS,
             horario: hora,
-            valor_servico: valorS,
-            score_pendente: scoreS,
+            valor_servico: parseFloat(valorS),
+            score_pendente: parseFloat(scoreS),
             status: "Pendente",
             data_domingo: dataD,
             usar_score: QUER_USAR_SCORE
         };
 
         try {
-            await fetch(`https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_AGENDAMENTO}`, {
+            const res = await fetch(URL_AGENDAMENTO, {
                 method: "POST",
-                headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
                 body: JSON.stringify(body)
             });
-            alert("Agendamento realizado!");
-            location.reload();
+            if(res.ok) {
+                alert("Agendamento realizado!");
+                location.reload();
+            }
         } catch (e) { alert("Erro ao agendar."); }
     }
 
@@ -322,11 +323,10 @@
     }
 
     async function verificarAgendamentoAtivo(email) {
-        const url = `https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_AGENDAMENTO}&limit=100`;
         try {
-            const res = await fetch(url, { headers: { "Authorization": `Bearer ${API_KEY}` } });
+            const res = await fetch(`${URL_AGENDAMENTO}?limit=100`, { headers: { "xc-token": TOKEN } });
             const data = await res.json();
-            const ativo = data.results.find(ag => ag.cliente_email === email && ag.status === "Pendente");
+            const ativo = data.list.find(ag => String(ag.cliente_email).toLowerCase() === email.toLowerCase() && ag.status === "Pendente");
             if(ativo) {
                 document.getElementById('area-agendamento').classList.add('hidden');
                 document.getElementById('nota-fiscal').classList.remove('hidden');
@@ -341,20 +341,23 @@
 
     async function finalizarCadastro() {
         const nome = document.getElementById('cad-nome').value;
-        const email = document.getElementById('cad-email').value;
+        const email = document.getElementById('cad-email').value.trim().toLowerCase();
         const senha = document.getElementById('cad-senha').value;
         const whatsapp = document.getElementById('cad-whatsapp').value;
-        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha tudo!");
+        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha tudo corretamente!");
 
-        const body = { nome, email, senha, whatsapp, saldo: "0" };
+        const body = { nome, email, senha, whatsapp, saldo: 0 };
 
         try {
-            await fetch(`https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_CADASTRO}`, {
+            const res = await fetch(URL_CADASTRO, {
                 method: "POST",
-                headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
                 body: JSON.stringify(body)
             });
-            alert("Cadastro realizado!"); irParaLogin();
+            if(res.ok) {
+                alert("Cadastro realizado!"); 
+                irParaLogin();
+            }
         } catch (e) { alert("Erro ao cadastrar."); }
     }
 
