@@ -180,8 +180,9 @@
 </div>
 
 <script>
-    const API_CADASTRO = "https://sheetdb.io/api/v1/i2no77emc4yng";
-    const API_AGENDAMENTO = "https://sheetdb.io/api/v1/izye8xzdqeub5";
+    // COLE SUA URL DO GOOGLE APPS SCRIPT ABAIXO
+    const URL_GOOGLE = "https://script.google.com/macros/s/AKfycbydzBgnqIaZyXwg_uLuVN0IPX6mYS_1CpHjy30CenwwttoafVmZxK-KvWprxk7BLLG89w/exec"; 
+    
     let SALDO_ATUAL = 0;
     let QUER_USAR_SCORE = "Não";
 
@@ -204,10 +205,11 @@
         const email = document.getElementById('login-email').value;
         const senha = document.getElementById('login-senha').value;
         try {
-            const res = await fetch(`${API_CADASTRO}/search?email=${email}&senha=${senha}`);
+            const res = await fetch(`${URL_GOOGLE}?action=read&sheet=cadastro`);
             const data = await res.json();
-            if (data.length > 0) {
-                const user = data[0];
+            const user = data.find(u => u.email === email && String(u.senha) === senha);
+            
+            if (user) {
                 SALDO_ATUAL = parseFloat(user.saldo) || 0;
                 document.getElementById('nome-display').innerText = "Cliente: " + user.nome;
                 document.getElementById('saldo-texto').innerText = "R$ " + SALDO_ATUAL.toFixed(2).replace('.', ',');
@@ -232,12 +234,10 @@
         }
 
         try {
-            // Busca agendamentos PENDENTES
-            const res = await fetch(`${API_AGENDAMENTO}/search?status=Pendente`);
+            const res = await fetch(`${URL_GOOGLE}?action=read&sheet=agendamento`);
             const agendamentos = await res.json();
             
-            // Filtra manualmente para evitar erro de formato do SheetDB
-            const ocupados = agendamentos.filter(ag => String(ag.data_domingo) === String(dataEscolhida));
+            const ocupados = agendamentos.filter(ag => String(ag.data_domingo) === String(dataEscolhida) && ag.status === "Pendente");
 
             ocupados.forEach(ag => {
                 for(let i = 0; i < selectHora.options.length; i++) {
@@ -283,20 +283,23 @@
         const email = document.getElementById('login-email').value;
 
         const dados = {
-            "cliente_email": email,
-            "servico": nomeS,
-            "horario": hora,
-            "valor_servico": valorS,
-            "score_pendente": scoreS,
-            "status": "Pendente",
-            "data_domingo": dataD, // SheetDB aceita o valor
-            "usar_score": QUER_USAR_SCORE
+            action: "create",
+            sheet: "agendamento",
+            values: {
+                "cliente_email": email,
+                "servico": nomeS,
+                "horario": hora,
+                "valor_servico": valorS,
+                "score_pendente": scoreS,
+                "status": "Pendente",
+                "data_domingo": dataD,
+                "usar_score": QUER_USAR_SCORE
+            }
         };
 
         try {
-            await fetch(API_AGENDAMENTO, {
+            await fetch(URL_GOOGLE, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(dados)
             });
             if(QUER_USAR_SCORE === "Sim") document.getElementById('aviso-resgate').style.display = "block";
@@ -333,11 +336,12 @@
     }
 
     async function verificarAgendamentoAtivo(email) {
-        const res = await fetch(`${API_AGENDAMENTO}/search?cliente_email=${email}&status=Pendente`);
+        const res = await fetch(`${URL_GOOGLE}?action=read&sheet=agendamento`);
         const data = await res.json();
-        if(data.length > 0) {
-            if(data[0].usar_score === "Sim") document.getElementById('aviso-resgate').style.display = "block";
-            exibirNota(data[0]);
+        const ativo = data.find(ag => ag.cliente_email === email && ag.status === "Pendente");
+        if(ativo) {
+            if(ativo.usar_score === "Sim") document.getElementById('aviso-resgate').style.display = "block";
+            exibirNota(ativo);
         }
     }
 
@@ -350,11 +354,17 @@
         const senha = document.getElementById('cad-senha').value;
         const whatsapp = document.getElementById('cad-whatsapp').value;
         if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha todos os dados corretamente!");
+        
+        const dados = {
+            action: "create",
+            sheet: "cadastro",
+            values: { "nome": nome, "email": email, "senha": senha, "whatsapp": whatsapp, "saldo": "0" }
+        };
+
         try {
-            await fetch(API_CADASTRO, {
+            await fetch(URL_GOOGLE, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ "nome": nome, "email": email, "senha": senha, "whatsapp": whatsapp, "saldo": "0" })
+                body: JSON.stringify(dados)
             });
             alert("Cadastro realizado!"); irParaLogin();
         } catch (e) { alert("Erro ao cadastrar."); }
