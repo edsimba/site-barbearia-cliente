@@ -180,9 +180,12 @@
 </div>
 
 <script>
-    // COLE SUA URL DO GOOGLE APPS SCRIPT ABAIXO
-    const URL_GOOGLE = "https://script.google.com/macros/s/AKfycbydzBgnqIaZyXwg_uLuVN0IPX6mYS_1CpHjy30CenwwttoafVmZxK-KvWprxk7BLLG89w/exec"; 
-    
+    // CONFIGURAÇÕES SHEETSON - TROQUE OS NOMES DAS ABAS SE NECESSÁRIO
+    const API_KEY = "_RsBLM-rP066IuLJrIe2W_UeyiQfKhTsQ109gOvAo3pf7Z9fOPmH6nAlT8Q";
+    const ID_CADASTRO = "1JNGrXPbCHCWNCBQDieTOrFyhtlJUe2UP_yrGVwIjGSY";
+    const ID_AGENDAMENTO = "1pw50ZZL7Ne3twW9QXV8ejVGWZ7ydYg2okD4XbvjcBsA";
+    const NOME_ABA = "Banco_De_Dados_Barbearia"; // Verifique se na sua planilha o nome é Página1 ou outro
+
     let SALDO_ATUAL = 0;
     let QUER_USAR_SCORE = "Não";
 
@@ -196,18 +199,18 @@
             e.target.value = "(" + v.substring(0, 2) + ") " + v.substring(2, 6) + "-" + v.substring(6);
         } else if (v.length > 2) {
             e.target.value = "(" + v.substring(0, 2) + ") " + v.substring(2);
-        } else {
-            e.target.value = v;
-        }
+        } else { e.target.value = v; }
     });
 
     async function logar() {
-        const email = document.getElementById('login-email').value;
+        const email = document.getElementById('login-email').value.trim().toLowerCase();
         const senha = document.getElementById('login-senha').value;
+        const url = `https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_CADASTRO}&limit=100`;
+
         try {
-            const res = await fetch(`${URL_GOOGLE}?action=read&sheet=cadastro`);
+            const res = await fetch(url, { headers: { "Authorization": `Bearer ${API_KEY}` } });
             const data = await res.json();
-            const user = data.find(u => u.email === email && String(u.senha) === senha);
+            const user = data.results.find(u => String(u.email).toLowerCase() === email && String(u.senha) === senha);
             
             if (user) {
                 SALDO_ATUAL = parseFloat(user.saldo) || 0;
@@ -218,7 +221,7 @@
                 carregarDomingos();
                 verificarAgendamentoAtivo(email);
             } else { alert("E-mail ou senha incorretos!"); }
-        } catch (e) { alert("Erro de conexão."); }
+        } catch (e) { alert("Erro ao carregar dados do servidor."); }
     }
 
     async function bloquearHorariosOcupados() {
@@ -226,38 +229,33 @@
         const selectHora = document.getElementById('select-horario');
         if(!dataEscolhida) return;
 
-        // Resetar opções
+        // Resetar horários
         for(let i = 0; i < selectHora.options.length; i++) {
             let opt = selectHora.options[i];
             if(opt.value === "") continue;
-            opt.disabled = false; opt.text = opt.value; opt.style.backgroundColor = ""; opt.style.color = "";
+            opt.disabled = false; opt.text = opt.value; opt.style.color = "";
         }
 
+        const url = `https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_AGENDAMENTO}&limit=100`;
         try {
-            const res = await fetch(`${URL_GOOGLE}?action=read&sheet=agendamento`);
-            const agendamentos = await res.json();
-            
-            const ocupados = agendamentos.filter(ag => String(ag.data_domingo) === String(dataEscolhida) && ag.status === "Pendente");
+            const res = await fetch(url, { headers: { "Authorization": `Bearer ${API_KEY}` } });
+            const json = await res.json();
+            const ocupados = json.results.filter(ag => String(ag.data_domingo) === dataEscolhida && ag.status === "Pendente");
 
             ocupados.forEach(ag => {
                 for(let i = 0; i < selectHora.options.length; i++) {
-                    let opt = selectHora.options[i];
-                    if(opt.value === ag.horario) {
-                        opt.disabled = true;
-                        opt.text = ag.horario + " (OCUPADO)";
-                        opt.style.backgroundColor = "#ffe5e5";
-                        opt.style.color = "#d63031";
+                    if(selectHora.options[i].value === ag.horario) {
+                        selectHora.options[i].disabled = true;
+                        selectHora.options[i].text = ag.horario + " (OCUPADO)";
+                        selectHora.options[i].style.color = "red";
                     }
                 }
             });
-        } catch(e) { console.error("Erro ao verificar."); }
+        } catch(e) { console.error("Erro ao verificar ocupação."); }
     }
 
     function toggleResgate() {
-        if (SALDO_ATUAL < 1.00) {
-            alert("Mínimo de R$ 1,00 para resgate.");
-            return;
-        }
+        if (SALDO_ATUAL < 1.00) { alert("Mínimo de R$ 1,00 para resgate."); return; }
         const card = document.getElementById('card-saldo');
         const btn = document.getElementById('btn-resgate');
         if (QUER_USAR_SCORE === "Não") {
@@ -282,28 +280,25 @@
         const [nomeS, valorS, scoreS] = serv.split('|');
         const email = document.getElementById('login-email').value;
 
-        const dados = {
-            action: "create",
-            sheet: "agendamento",
-            values: {
-                "cliente_email": email,
-                "servico": nomeS,
-                "horario": hora,
-                "valor_servico": valorS,
-                "score_pendente": scoreS,
-                "status": "Pendente",
-                "data_domingo": dataD,
-                "usar_score": QUER_USAR_SCORE
-            }
+        const body = {
+            cliente_email: email,
+            servico: nomeS,
+            horario: hora,
+            valor_servico: valorS,
+            score_pendente: scoreS,
+            status: "Pendente",
+            data_domingo: dataD,
+            usar_score: QUER_USAR_SCORE
         };
 
         try {
-            await fetch(URL_GOOGLE, {
-                method: 'POST',
-                body: JSON.stringify(dados)
+            await fetch(`https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_AGENDAMENTO}`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                body: JSON.stringify(body)
             });
-            if(QUER_USAR_SCORE === "Sim") document.getElementById('aviso-resgate').style.display = "block";
-            exibirNota({data_domingo: dataD, horario: hora, servico: nomeS, valor_servico: valorS});
+            alert("Agendamento realizado!");
+            location.reload();
         } catch (e) { alert("Erro ao agendar."); }
     }
 
@@ -326,49 +321,45 @@
         select.add(new Option(dataFormatada, dataFormatada));
     }
 
-    function exibirNota(dados) {
-        document.getElementById('area-agendamento').classList.add('hidden');
-        document.getElementById('nota-fiscal').classList.remove('hidden');
-        document.getElementById('nota-data').innerText = dados.data_domingo;
-        document.getElementById('nota-hora').innerText = dados.horario;
-        document.getElementById('nota-serv').innerText = dados.servico;
-        document.getElementById('nota-valor').innerText = dados.valor_servico;
-    }
-
     async function verificarAgendamentoAtivo(email) {
-        const res = await fetch(`${URL_GOOGLE}?action=read&sheet=agendamento`);
-        const data = await res.json();
-        const ativo = data.find(ag => ag.cliente_email === email && ag.status === "Pendente");
-        if(ativo) {
-            if(ativo.usar_score === "Sim") document.getElementById('aviso-resgate').style.display = "block";
-            exibirNota(ativo);
-        }
+        const url = `https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_AGENDAMENTO}&limit=100`;
+        try {
+            const res = await fetch(url, { headers: { "Authorization": `Bearer ${API_KEY}` } });
+            const data = await res.json();
+            const ativo = data.results.find(ag => ag.cliente_email === email && ag.status === "Pendente");
+            if(ativo) {
+                document.getElementById('area-agendamento').classList.add('hidden');
+                document.getElementById('nota-fiscal').classList.remove('hidden');
+                document.getElementById('nota-data').innerText = ativo.data_domingo;
+                document.getElementById('nota-hora').innerText = ativo.horario;
+                document.getElementById('nota-serv').innerText = ativo.servico;
+                document.getElementById('nota-valor').innerText = ativo.valor_servico;
+                if(ativo.usar_score === "Sim") document.getElementById('aviso-resgate').style.display = "block";
+            }
+        } catch(e) {}
     }
-
-    function irParaCadastro() { document.getElementById('tela-login').classList.add('hidden'); document.getElementById('tela-cadastro').classList.remove('hidden'); }
-    function irParaLogin() { document.getElementById('tela-cadastro').classList.add('hidden'); document.getElementById('tela-login').classList.remove('hidden'); }
 
     async function finalizarCadastro() {
         const nome = document.getElementById('cad-nome').value;
         const email = document.getElementById('cad-email').value;
         const senha = document.getElementById('cad-senha').value;
         const whatsapp = document.getElementById('cad-whatsapp').value;
-        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha todos os dados corretamente!");
-        
-        const dados = {
-            action: "create",
-            sheet: "cadastro",
-            values: { "nome": nome, "email": email, "senha": senha, "whatsapp": whatsapp, "saldo": "0" }
-        };
+        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha tudo!");
+
+        const body = { nome, email, senha, whatsapp, saldo: "0" };
 
         try {
-            await fetch(URL_GOOGLE, {
-                method: 'POST',
-                body: JSON.stringify(dados)
+            await fetch(`https://api.sheetson.com/v2/sheets/${NOME_ABA}?spreadsheetId=${ID_CADASTRO}`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                body: JSON.stringify(body)
             });
             alert("Cadastro realizado!"); irParaLogin();
         } catch (e) { alert("Erro ao cadastrar."); }
     }
+
+    function irParaCadastro() { document.getElementById('tela-login').classList.add('hidden'); document.getElementById('tela-cadastro').classList.remove('hidden'); }
+    function irParaLogin() { document.getElementById('tela-cadastro').classList.add('hidden'); document.getElementById('tela-login').classList.remove('hidden'); }
 </script>
 </body>
 </html>
