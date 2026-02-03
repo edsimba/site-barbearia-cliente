@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADM - Barbearia Score</title>
+    <title>ADM - Barbearia Score Premium</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: white; padding: 20px; }
         .container { max-width: 600px; margin: auto; }
@@ -16,7 +16,6 @@
         .resgate-badge { background: #d35400; color: white; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; text-align: center; margin-top: 10px; display: block; border: 1px solid #ff9f43; }
         .cliente-nome { color: #e67e22; font-size: 18px; font-weight: bold; margin: 10px 0 5px 0; }
         .info-linha { font-size: 14px; margin: 3px 0; color: #ccc; }
-        h2 { border-bottom: 2px solid #e67e22; padding-bottom: 10px; margin-top: 30px; }
         .loading { color: #f1c40f; font-weight: bold; text-align: center; padding: 20px; }
     </style>
 </head>
@@ -27,29 +26,29 @@
     <button onclick="carregarAgendamentos()" style="background:#333; color:white; padding:12px; width:100%; border-radius:8px; border:1px solid #444; margin-bottom:20px; cursor:pointer; font-weight: bold;">🔄 ATUALIZAR LISTA</button>
     
     <div id="lista-pendentes">
-        <p class="loading">Iniciando sistema...</p>
+        <p class="loading">Carregando agendamentos ilimitados...</p>
     </div>
 </div>
 
 <script>
-    const API_CADASTRO = "https://sheetdb.io/api/v1/i2no77emc4yng";
-    const API_AGENDAMENTO = "https://sheetdb.io/api/v1/izye8xzdqeub5";
+    // COLE SUA URL DO GOOGLE APPS SCRIPT ABAIXO
+    const URL_GOOGLE = "https://script.google.com/macros/s/AKfycbydzBgnqIaZyXwg_uLuVN0IPX6mYS_1CpHjy30CenwwttoafVmZxK-KvWprxk7BLLG89w/exec";
 
     async function carregarAgendamentos() {
         const div = document.getElementById('lista-pendentes');
-        div.innerHTML = "<p class='loading'>Buscando dados na planilha...</p>";
+        div.innerHTML = "<p class='loading'>Buscando dados nas planilhas...</p>";
 
         try {
-            // Buscamos todos para filtrar no JS, evita erros de busca da API
+            // Busca dados das duas planilhas via Script
             const [resAgend, resClientes] = await Promise.all([
-                fetch(API_AGENDAMENTO),
-                fetch(API_CADASTRO)
+                fetch(`${URL_GOOGLE}?action=read&sheet=agendamento`),
+                fetch(`${URL_GOOGLE}?action=read&sheet=cadastro`)
             ]);
 
             const agendamentosFull = await resAgend.json();
             const clientes = await resClientes.json();
 
-            // Filtramos apenas os Pendentes aqui no código
+            // Filtra apenas agendamentos com status Pendente
             const agendamentos = agendamentosFull.filter(a => a.status === "Pendente");
 
             if (!agendamentos || agendamentos.length === 0) {
@@ -60,9 +59,9 @@
             div.innerHTML = "";
             agendamentos.forEach((item) => {
                 const dadosCliente = clientes.find(c => c.email === item.cliente_email);
-                const nomeExibir = dadosCliente ? dadosCliente.nome : "Cliente não cadastrado";
+                const nomeExibir = dadosCliente ? dadosCliente.nome : "Cliente não encontrado";
                 const whatsExibir = dadosCliente ? dadosCliente.whatsapp : "N/A";
-                const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo || 0).toFixed(2) : "0,00";
+                const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo || 0).toFixed(2) : "0.00";
                 
                 const pediuResgate = (String(item.usar_score).trim() === "Sim");
 
@@ -70,18 +69,18 @@
 
                 if (pediuResgate) {
                     botoesAcao = `
-                        <div class="resgate-badge">⚠️ CLIENTE QUER USAR O SALDO (R$ ${saldoAtual})</div>
+                        <div class="resgate-badge">⚠️ CLIENTE SOLICITOU USAR SCORE (Saldo: R$ ${saldoAtual})</div>
                         <button class="btn-resgate-sim" onclick="permitirResgate('${item.cliente_email}', '${nomeExibir}')">
-                            ✅ PERMITIR (ZERAR SALDO)
+                            ✅ PERMITIR (ZERAR SALDO E CONCLUIR)
                         </button>
                         <button class="btn-resgate-nao" onclick="confirmarPagamento('${item.cliente_email}', '${item.score_pendente}', '${nomeExibir}')">
-                            ❌ NEGAR (COBRAR INTEGRAL)
+                            ❌ NEGAR (COBRAR NORMAL)
                         </button>
                     `;
                 } else {
                     botoesAcao = `
                         <button class="btn-confirmar" onclick="confirmarPagamento('${item.cliente_email}', '${item.score_pendente}', '${nomeExibir}')">
-                            CONFIRMAR PAGAMENTO + SCORE
+                            CONFIRMAR PAGAMENTO E LIBERAR SCORE
                         </button>
                     `;
                 }
@@ -91,76 +90,112 @@
                         <span class="status-badge">Pendente</span>
                         <div class="cliente-nome">${nomeExibir}</div>
                         <div class="info-linha">📱 WhatsApp: ${whatsExibir}</div>
-                        <div class="info-linha">💇‍♂️ Serviço: ${item.servico}</div>
+                        <div class="info-linha">💇‍♂️ Serviço: <strong>${item.servico}</strong></div>
+                        <div class="info-linha">💰 Valor: R$ ${item.valor_servico}</div>
                         <div class="info-linha">📅 Data: ${item.data_domingo} às ${item.horario}</div>
                         <div class="info-linha" style="color: #27ae60; font-weight: bold; margin-top: 10px;">
-                            ⭐ Bônus: R$ ${item.score_pendente}
+                            ⭐ Score a liberar: R$ ${item.score_pendente}
                         </div>
                         ${botoesAcao}
-                        <button class="btn-excluir" onclick="cancelarAgendamento('${item.cliente_email}', '${item.horario}')">CANCELAR</button>
+                        <button class="btn-excluir" onclick="cancelarAgendamento('${item.cliente_email}')">CANCELAR AGENDAMENTO</button>
                     </div>
                 `;
             });
         } catch (e) {
-            console.error(e);
-            div.innerHTML = "<p style='color: #ff4757; text-align: center;'>Erro ao conectar com as planilhas. Tente atualizar.</p>";
+            div.innerHTML = "<p style='color: #ff4757; text-align: center;'>Erro ao conectar com as planilhas. Verifique a URL do Script.</p>";
         }
     }
 
     async function permitirResgate(email, nome) {
-        if (!confirm(`Zerar saldo de ${nome} e concluir atendimento?`)) return;
+        if (!confirm(`Autorizar resgate de ${nome}? O saldo será ZERADO.`)) return;
         try {
-            // ZERA SALDO
-            await fetch(`${API_CADASTRO}/email/${encodeURIComponent(email)}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "saldo": "0" })
+            // Zera saldo na planilha de CADASTRO
+            await fetch(URL_GOOGLE, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: "update",
+                    sheet: "cadastro",
+                    key: "email",
+                    keyValue: email,
+                    targetField: "saldo",
+                    newValue: "0"
+                })
             });
-            // CONCLUI AGENDAMENTO
-            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodeURIComponent(email)}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "status": "Concluido" })
+            // Conclui agendamento na planilha de AGENDAMENTO
+            await fetch(URL_GOOGLE, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: "update",
+                    sheet: "agendamento",
+                    key: "cliente_email",
+                    keyValue: email,
+                    targetField: "status",
+                    newValue: "Concluido"
+                })
             });
-            alert("Saldo zerado e atendimento concluído!");
+            alert("Sucesso! Saldo zerado e agendamento concluído.");
             carregarAgendamentos();
         } catch (e) { alert("Erro ao processar."); }
     }
 
     async function confirmarPagamento(email, score, nome) {
-        if (!confirm(`Somar R$ ${score} ao saldo de ${nome}?`)) return;
+        if (!confirm(`Confirmar pagamento de ${nome}? O score será SOMADO.`)) return;
         try {
-            const resUser = await fetch(`${API_CADASTRO}/search?email=${encodeURIComponent(email)}`);
-            const user = await resUser.json();
-            const novoSaldo = (parseFloat(user[0].saldo || 0) + parseFloat(score)).toFixed(2);
+            // Busca saldo atual
+            const res = await fetch(`${URL_GOOGLE}?action=read&sheet=cadastro`);
+            const clientes = await res.json();
+            const user = clientes.find(c => c.email === email);
+            
+            const novoSaldo = (parseFloat(user.saldo || 0) + parseFloat(score)).toFixed(2);
 
-            await fetch(`${API_CADASTRO}/email/${encodeURIComponent(email)}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "saldo": novoSaldo })
+            // Atualiza saldo
+            await fetch(URL_GOOGLE, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: "update",
+                    sheet: "cadastro",
+                    key: "email",
+                    keyValue: email,
+                    targetField: "saldo",
+                    newValue: novoSaldo
+                })
             });
-            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodeURIComponent(email)}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "status": "Concluido" })
+            // Atualiza status agendamento
+            await fetch(URL_GOOGLE, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: "update",
+                    sheet: "agendamento",
+                    key: "cliente_email",
+                    keyValue: email,
+                    targetField: "status",
+                    newValue: "Concluido"
+                })
             });
-            alert("Score adicionado com sucesso!");
+            alert("Sucesso! Score adicionado.");
             carregarAgendamentos();
         } catch (e) { alert("Erro ao processar."); }
     }
 
-    async function cancelarAgendamento(email, hora) {
-        if (!confirm("Remover este agendamento?")) return;
+    async function cancelarAgendamento(email) {
+        if (!confirm("Deseja realmente cancelar este agendamento?")) return;
         try {
-            await fetch(`${API_AGENDAMENTO}/cliente_email/${encodeURIComponent(email)}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "status": "Cancelado" })
+            await fetch(URL_GOOGLE, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: "update",
+                    sheet: "agendamento",
+                    key: "cliente_email",
+                    keyValue: email,
+                    targetField: "status",
+                    newValue: "Cancelado"
+                })
             });
             carregarAgendamentos();
-        } catch (e) {}
+        } catch (e) { alert("Erro ao cancelar."); }
     }
 
+    // Inicializa a lista
     carregarAgendamentos();
 </script>
 </body>
