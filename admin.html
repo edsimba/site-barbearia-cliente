@@ -26,30 +26,31 @@
     <button onclick="carregarAgendamentos()" style="background:#333; color:white; padding:12px; width:100%; border-radius:8px; border:1px solid #444; margin-bottom:20px; cursor:pointer; font-weight: bold;">🔄 ATUALIZAR LISTA</button>
     
     <div id="lista-pendentes">
-        <p class="loading">Carregando agendamentos ilimitados...</p>
+        <p class="loading">Carregando agendamentos do NocoDB...</p>
     </div>
 </div>
 
 <script>
-    // COLE SUA URL DO GOOGLE APPS SCRIPT ABAIXO
-    const URL_GOOGLE = "https://script.google.com/macros/s/AKfycbydzBgnqIaZyXwg_uLuVN0IPX6mYS_1CpHjy30CenwwttoafVmZxK-KvWprxk7BLLG89w/exec";
+    // CONFIGURAÇÕES NOCODB
+    const TOKEN = "D8NVVp7hEJE2X6cD4cdRwuhHtR9tnX3lzOT2QtnE";
+    const URL_CADASTRO = "https://app.nocodb.com/api/v2/tables/measzir7yghqdl9/records";
+    const URL_AGENDAMENTO = "https://app.nocodb.com/api/v2/tables/mvv28fo6ld6xnq9/records";
 
     async function carregarAgendamentos() {
         const div = document.getElementById('lista-pendentes');
-        div.innerHTML = "<p class='loading'>Buscando dados nas planilhas...</p>";
+        div.innerHTML = "<p class='loading'>Buscando dados no banco de dados...</p>";
 
         try {
-            // Busca dados das duas planilhas via Script
             const [resAgend, resClientes] = await Promise.all([
-                fetch(`${URL_GOOGLE}?action=read&sheet=agendamento`),
-                fetch(`${URL_GOOGLE}?action=read&sheet=cadastro`)
+                fetch(`${URL_AGENDAMENTO}?limit=100`, { headers: { "xc-token": TOKEN } }),
+                fetch(`${URL_CADASTRO}?limit=100`, { headers: { "xc-token": TOKEN } })
             ]);
 
-            const agendamentosFull = await resAgend.json();
-            const clientes = await resClientes.json();
+            const dataAgend = await resAgend.json();
+            const dataCli = await resClientes.json();
 
-            // Filtra apenas agendamentos com status Pendente
-            const agendamentos = agendamentosFull.filter(a => a.status === "Pendente");
+            const agendamentos = dataAgend.list.filter(a => a.status === "Pendente");
+            const clientes = dataCli.list;
 
             if (!agendamentos || agendamentos.length === 0) {
                 div.innerHTML = "<p style='color: #888; text-align: center;'>Nenhum agendamento pendente.</p>";
@@ -58,7 +59,7 @@
 
             div.innerHTML = "";
             agendamentos.forEach((item) => {
-                const dadosCliente = clientes.find(c => c.email === item.cliente_email);
+                const dadosCliente = clientes.find(c => String(c.email).toLowerCase() === String(item.cliente_email).toLowerCase());
                 const nomeExibir = dadosCliente ? dadosCliente.nome : "Cliente não encontrado";
                 const whatsExibir = dadosCliente ? dadosCliente.whatsapp : "N/A";
                 const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo || 0).toFixed(2) : "0.00";
@@ -70,16 +71,16 @@
                 if (pediuResgate) {
                     botoesAcao = `
                         <div class="resgate-badge">⚠️ CLIENTE SOLICITOU USAR SCORE (Saldo: R$ ${saldoAtual})</div>
-                        <button class="btn-resgate-sim" onclick="permitirResgate('${item.cliente_email}', '${nomeExibir}')">
+                        <button class="btn-resgate-sim" onclick="permitirResgate('${item.Id}', '${dadosCliente?.Id}', '${nomeExibir}')">
                             ✅ PERMITIR (ZERAR SALDO E CONCLUIR)
                         </button>
-                        <button class="btn-resgate-nao" onclick="confirmarPagamento('${item.cliente_email}', '${item.score_pendente}', '${nomeExibir}')">
+                        <button class="btn-resgate-nao" onclick="confirmarPagamento('${item.Id}', '${dadosCliente?.Id}', ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
                             ❌ NEGAR (COBRAR NORMAL)
                         </button>
                     `;
                 } else {
                     botoesAcao = `
-                        <button class="btn-confirmar" onclick="confirmarPagamento('${item.cliente_email}', '${item.score_pendente}', '${nomeExibir}')">
+                        <button class="btn-confirmar" onclick="confirmarPagamento('${item.Id}', '${dadosCliente?.Id}', ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
                             CONFIRMAR PAGAMENTO E LIBERAR SCORE
                         </button>
                     `;
@@ -91,111 +92,79 @@
                         <div class="cliente-nome">${nomeExibir}</div>
                         <div class="info-linha">📱 WhatsApp: ${whatsExibir}</div>
                         <div class="info-linha">💇‍♂️ Serviço: <strong>${item.servico}</strong></div>
-                        <div class="info-linha">💰 Valor: R$ ${item.valor_servico}</div>
+                        <div class="info-linha">💰 Valor: R$ ${parseFloat(item.valor_servico).toFixed(2)}</div>
                         <div class="info-linha">📅 Data: ${item.data_domingo} às ${item.horario}</div>
                         <div class="info-linha" style="color: #27ae60; font-weight: bold; margin-top: 10px;">
-                            ⭐ Score a liberar: R$ ${item.score_pendente}
+                            ⭐ Score a liberar: R$ ${parseFloat(item.score_pendente).toFixed(2)}
                         </div>
                         ${botoesAcao}
-                        <button class="btn-excluir" onclick="cancelarAgendamento('${item.cliente_email}')">CANCELAR AGENDAMENTO</button>
+                        <button class="btn-excluir" onclick="cancelarAgendamento('${item.Id}')">CANCELAR AGENDAMENTO</button>
                     </div>
                 `;
             });
         } catch (e) {
-            div.innerHTML = "<p style='color: #ff4757; text-align: center;'>Erro ao conectar com as planilhas. Verifique a URL do Script.</p>";
+            div.innerHTML = "<p style='color: #ff4757; text-align: center;'>Erro ao conectar com o NocoDB.</p>";
         }
     }
 
-    async function permitirResgate(email, nome) {
+    async function permitirResgate(idAgendamento, idCliente, nome) {
+        if (!idCliente) return alert("Erro: ID do cliente não encontrado.");
         if (!confirm(`Autorizar resgate de ${nome}? O saldo será ZERADO.`)) return;
+        
         try {
-            // Zera saldo na planilha de CADASTRO
-            await fetch(URL_GOOGLE, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: "update",
-                    sheet: "cadastro",
-                    key: "email",
-                    keyValue: email,
-                    targetField: "saldo",
-                    newValue: "0"
-                })
+            // Zera saldo do cliente
+            await fetch(URL_CADASTRO, {
+                method: 'PATCH',
+                headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
+                body: JSON.stringify({ Id: idCliente, saldo: 0 })
             });
-            // Conclui agendamento na planilha de AGENDAMENTO
-            await fetch(URL_GOOGLE, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: "update",
-                    sheet: "agendamento",
-                    key: "cliente_email",
-                    keyValue: email,
-                    targetField: "status",
-                    newValue: "Concluido"
-                })
+            // Conclui agendamento
+            await fetch(URL_AGENDAMENTO, {
+                method: 'PATCH',
+                headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
+                body: JSON.stringify({ Id: idAgendamento, status: "Concluido" })
             });
             alert("Sucesso! Saldo zerado e agendamento concluído.");
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao processar."); }
+        } catch (e) { alert("Erro ao processar resgate."); }
     }
 
-    async function confirmarPagamento(email, score, nome) {
+    async function confirmarPagamento(idAgendamento, idCliente, scoreGanho, saldoAtual, nome) {
+        if (!idCliente) return alert("Erro: Cliente não localizado.");
         if (!confirm(`Confirmar pagamento de ${nome}? O score será SOMADO.`)) return;
-        try {
-            // Busca saldo atual
-            const res = await fetch(`${URL_GOOGLE}?action=read&sheet=cadastro`);
-            const clientes = await res.json();
-            const user = clientes.find(c => c.email === email);
-            
-            const novoSaldo = (parseFloat(user.saldo || 0) + parseFloat(score)).toFixed(2);
 
-            // Atualiza saldo
-            await fetch(URL_GOOGLE, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: "update",
-                    sheet: "cadastro",
-                    key: "email",
-                    keyValue: email,
-                    targetField: "saldo",
-                    newValue: novoSaldo
-                })
+        try {
+            const novoSaldo = parseFloat(saldoAtual) + parseFloat(scoreGanho);
+            
+            // Atualiza saldo do cliente
+            await fetch(URL_CADASTRO, {
+                method: 'PATCH',
+                headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
+                body: JSON.stringify({ Id: idCliente, saldo: novoSaldo })
             });
-            // Atualiza status agendamento
-            await fetch(URL_GOOGLE, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: "update",
-                    sheet: "agendamento",
-                    key: "cliente_email",
-                    keyValue: email,
-                    targetField: "status",
-                    newValue: "Concluido"
-                })
+            // Atualiza status do agendamento
+            await fetch(URL_AGENDAMENTO, {
+                method: 'PATCH',
+                headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
+                body: JSON.stringify({ Id: idAgendamento, status: "Concluido" })
             });
-            alert("Sucesso! Score adicionado.");
+            alert("Sucesso! Score adicionado ao cliente.");
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao processar."); }
+        } catch (e) { alert("Erro ao confirmar pagamento."); }
     }
 
-    async function cancelarAgendamento(email) {
-        if (!confirm("Deseja realmente cancelar este agendamento?")) return;
+    async function cancelarAgendamento(idAgendamento) {
+        if (!confirm("Deseja realmente cancelar/excluir este agendamento?")) return;
         try {
-            await fetch(URL_GOOGLE, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: "update",
-                    sheet: "agendamento",
-                    key: "cliente_email",
-                    keyValue: email,
-                    targetField: "status",
-                    newValue: "Cancelado"
-                })
+            await fetch(URL_AGENDAMENTO, {
+                method: 'DELETE',
+                headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
+                body: JSON.stringify({ Id: idAgendamento })
             });
             carregarAgendamentos();
         } catch (e) { alert("Erro ao cancelar."); }
     }
 
-    // Inicializa a lista
     carregarAgendamentos();
 </script>
 </body>
