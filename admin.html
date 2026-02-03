@@ -26,19 +26,19 @@
     <button onclick="carregarAgendamentos()" style="background:#333; color:white; padding:12px; width:100%; border-radius:8px; border:1px solid #444; margin-bottom:20px; cursor:pointer; font-weight: bold;">🔄 ATUALIZAR LISTA</button>
     
     <div id="lista-pendentes">
-        <p class="loading">Carregando agendamentos do NocoDB...</p>
+        <p class="loading">Conectando ao NocoDB...</p>
     </div>
 </div>
 
 <script>
-    // CONFIGURAÇÕES NOCODB
+    // --- CONFIGURAÇÃO NOCODB ---
     const TOKEN = "D8NVVp7hEJE2X6cD4cdRwuhHtR9tnX3lzOT2QtnE";
     const URL_CADASTRO = "https://app.nocodb.com/api/v2/tables/measzir7yghqdl9/records";
     const URL_AGENDAMENTO = "https://app.nocodb.com/api/v2/tables/mvv28fo6ld6xnq9/records";
 
     async function carregarAgendamentos() {
         const div = document.getElementById('lista-pendentes');
-        div.innerHTML = "<p class='loading'>Buscando dados no banco de dados...</p>";
+        div.innerHTML = "<p class='loading'>Buscando agendamentos...</p>";
 
         try {
             const [resAgend, resClientes] = await Promise.all([
@@ -49,6 +49,7 @@
             const dataAgend = await resAgend.json();
             const dataCli = await resClientes.json();
 
+            // NocoDB coloca os dados em 'list'
             const agendamentos = dataAgend.list.filter(a => a.status === "Pendente");
             const clientes = dataCli.list;
 
@@ -71,16 +72,16 @@
                 if (pediuResgate) {
                     botoesAcao = `
                         <div class="resgate-badge">⚠️ CLIENTE SOLICITOU USAR SCORE (Saldo: R$ ${saldoAtual})</div>
-                        <button class="btn-resgate-sim" onclick="permitirResgate('${item.Id}', '${dadosCliente?.Id}', '${nomeExibir}')">
+                        <button class="btn-resgate-sim" onclick="permitirResgate(${item.Id}, ${dadosCliente?.Id}, '${nomeExibir}')">
                             ✅ PERMITIR (ZERAR SALDO E CONCLUIR)
                         </button>
-                        <button class="btn-resgate-nao" onclick="confirmarPagamento('${item.Id}', '${dadosCliente?.Id}', ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
+                        <button class="btn-resgate-nao" onclick="confirmarPagamento(${item.Id}, ${dadosCliente?.Id}, ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
                             ❌ NEGAR (COBRAR NORMAL)
                         </button>
                     `;
                 } else {
                     botoesAcao = `
-                        <button class="btn-confirmar" onclick="confirmarPagamento('${item.Id}', '${dadosCliente?.Id}', ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
+                        <button class="btn-confirmar" onclick="confirmarPagamento(${item.Id}, ${dadosCliente?.Id}, ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
                             CONFIRMAR PAGAMENTO E LIBERAR SCORE
                         </button>
                     `;
@@ -98,71 +99,71 @@
                             ⭐ Score a liberar: R$ ${parseFloat(item.score_pendente).toFixed(2)}
                         </div>
                         ${botoesAcao}
-                        <button class="btn-excluir" onclick="cancelarAgendamento('${item.Id}')">CANCELAR AGENDAMENTO</button>
+                        <button class="btn-excluir" onclick="cancelarAgendamento(${item.Id})">CANCELAR AGENDAMENTO</button>
                     </div>
                 `;
             });
         } catch (e) {
-            div.innerHTML = "<p style='color: #ff4757; text-align: center;'>Erro ao conectar com o NocoDB.</p>";
+            console.error(e);
+            div.innerHTML = "<p style='color: #ff4757; text-align: center;'>Erro ao conectar com o NocoDB. Verifique o Token e as URLs.</p>";
         }
     }
 
-    async function permitirResgate(idAgendamento, idCliente, nome) {
-        if (!idCliente) return alert("Erro: ID do cliente não encontrado.");
+    async function permitirResgate(idAgend, idCli, nome) {
+        if (!idCli) return alert("Cliente não encontrado no banco.");
         if (!confirm(`Autorizar resgate de ${nome}? O saldo será ZERADO.`)) return;
         
         try {
-            // Zera saldo do cliente
+            // Zera saldo
             await fetch(URL_CADASTRO, {
                 method: 'PATCH',
                 headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
-                body: JSON.stringify({ Id: idCliente, saldo: 0 })
+                body: JSON.stringify({ Id: idCli, saldo: 0 })
             });
             // Conclui agendamento
             await fetch(URL_AGENDAMENTO, {
                 method: 'PATCH',
                 headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
-                body: JSON.stringify({ Id: idAgendamento, status: "Concluido" })
+                body: JSON.stringify({ Id: idAgend, status: "Concluido" })
             });
-            alert("Sucesso! Saldo zerado e agendamento concluído.");
+            alert("Sucesso! Saldo zerado e corte concluído.");
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao processar resgate."); }
+        } catch (e) { alert("Erro ao processar."); }
     }
 
-    async function confirmarPagamento(idAgendamento, idCliente, scoreGanho, saldoAtual, nome) {
-        if (!idCliente) return alert("Erro: Cliente não localizado.");
-        if (!confirm(`Confirmar pagamento de ${nome}? O score será SOMADO.`)) return;
+    async function confirmarPagamento(idAgend, idCli, score, saldoA, nome) {
+        if (!idCli) return alert("Cliente não encontrado.");
+        if (!confirm(`Confirmar pagamento de ${nome}?`)) return;
 
         try {
-            const novoSaldo = parseFloat(saldoAtual) + parseFloat(scoreGanho);
-            
-            // Atualiza saldo do cliente
+            const novoSaldo = (parseFloat(saldoA) + parseFloat(score)).toFixed(2);
+            // Atualiza saldo
             await fetch(URL_CADASTRO, {
                 method: 'PATCH',
                 headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
-                body: JSON.stringify({ Id: idCliente, saldo: novoSaldo })
+                body: JSON.stringify({ Id: idCli, saldo: novoSaldo })
             });
-            // Atualiza status do agendamento
+            // Conclui agendamento
             await fetch(URL_AGENDAMENTO, {
                 method: 'PATCH',
                 headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
-                body: JSON.stringify({ Id: idAgendamento, status: "Concluido" })
+                body: JSON.stringify({ Id: idAgend, status: "Concluido" })
             });
-            alert("Sucesso! Score adicionado ao cliente.");
+            alert("Sucesso! Score adicionado.");
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao confirmar pagamento."); }
+        } catch (e) { alert("Erro ao processar."); }
     }
 
-    async function cancelarAgendamento(idAgendamento) {
-        if (!confirm("Deseja realmente cancelar/excluir este agendamento?")) return;
+    async function cancelarAgendamento(idAgend) {
+        if (!confirm("Excluir este agendamento?")) return;
         try {
             await fetch(URL_AGENDAMENTO, {
                 method: 'DELETE',
                 headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
-                body: JSON.stringify({ Id: idAgendamento })
+                body: JSON.stringify({ Id: idAgend })
             });
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao cancelar."); }
+        } catch (e) { alert("Erro ao excluir."); }
     }
 
     carregarAgendamentos();
