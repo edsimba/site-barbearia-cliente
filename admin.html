@@ -3,30 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADM - Barbearia Score Premium</title>
+    <title>ADM - Barbearia Premium</title>
+    <!-- FontAwesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: white; padding: 20px; }
-        .container { max-width: 600px; margin: auto; }
-        .card-agendamento { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: left; position: relative; border-left: 5px solid #e67e22; }
-        .btn-confirmar { background: #27ae60; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px; }
-        .btn-excluir { background: #c0392b; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 5px; width: 100%; opacity: 0.8; }
-        .btn-resgate-sim { background: #2980b9; color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; font-size: 14px; }
-        .btn-resgate-nao { background: #7f8c8d; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-top: 5px; width: 100%; }
-        .status-badge { background: #f1c40f; color: black; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-        .resgate-badge { background: #d35400; color: white; padding: 8px; border-radius: 4px; font-size: 13px; font-weight: bold; text-align: center; margin-top: 10px; display: block; border: 1px solid #ff9f43; }
-        .cliente-nome { color: #e67e22; font-size: 18px; font-weight: bold; margin: 10px 0 5px 0; }
-        .info-linha { font-size: 14px; margin: 3px 0; color: #ccc; }
-        .loading { color: #f1c40f; font-weight: bold; text-align: center; padding: 20px; }
+        :root {
+            --primary: #c5a059;
+            --bg-body: #f4f6f9;
+            --bg-card: #ffffff;
+            --text-main: #2c3e50;
+            --text-muted: #7f8c8d;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --border-color: #eaeff5;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            padding: 20px; 
+        }
+
+        .container { 
+            max-width: 700px; 
+            margin: auto; 
+        }
+
+        .header-painel {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header-painel h1 {
+            font-size: 24px;
+            color: #111;
+            font-weight: 700;
+        }
+
+        .header-painel p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Controles do Topo (Filtro e Botão) */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            background: var(--bg-card);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            align-items: center;
+        }
+
+        .controls select {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-family: 'Poppins', sans-serif;
+            color: var(--text-main);
+            outline: none;
+            background: #f9fafb;
+            cursor: pointer;
+        }
+
+        .controls select:focus { border-color: var(--primary); }
+
+        .btn-atualizar {
+            background: var(--text-main);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex; gap: 8px; align-items: center;
+        }
+
+        .btn-atualizar:hover { background: #1a252f; }
+
+        /* Estilo dos Cards de Agendamento */
+        .card-agendamento { 
+            background: var(--bg-card); 
+            border: 1px solid var(--border-color); 
+            padding: 20px; 
+            border-radius: 16px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.04);
+            position: relative;
+            transition: 0.3s;
+        }
+
+        .card-agendamento:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+
+        .data-hora {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .status-badge { 
+            background: #fef5e7; 
+            color: #d35400; 
+            padding: 4px 10px; 
+            border-radius: 50px; 
+            font-size: 11px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+        }
+
+        .cliente-nome { 
+            font-size: 18px; 
+            font-weight: 700; 
+            color: #111;
+            margin-bottom: 5px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-item {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .info-item strong {
+            color: var(--text-main);
+            display: block;
+            font-size: 14px;
+        }
+
+        .info-item i { width: 18px; color: var(--primary); }
+
+        /* Botões de Ação */
+        .acoes-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .btn-acao {
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            transition: 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+
+        .btn-confirmar { background: rgba(39, 174, 96, 0.1); color: var(--success); }
+        .btn-confirmar:hover { background: var(--success); color: #fff; }
+
+        .btn-excluir { background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); padding: 8px; }
+        .btn-excluir:hover { background: rgba(231, 76, 60, 0.1); color: var(--danger); border-color: var(--danger); }
+
+        /* Destaque para pedido de resgate */
+        .resgate-alerta {
+            background: #fff3e0;
+            border-left: 4px solid var(--warning);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .resgate-alerta h4 { color: #d35400; font-size: 13px; margin-bottom: 3px; }
+        .resgate-alerta p { color: #7f8c8d; font-size: 12px; margin: 0; }
+
+        .btn-resgate-sim { background: var(--primary); color: white; }
+        .btn-resgate-sim:hover { background: #b38f4d; }
+        
+        .btn-resgate-nao { background: #f1f2f6; color: var(--text-muted); }
+        .btn-resgate-nao:hover { background: #dfe4ea; }
+
+        .loading { text-align: center; color: var(--primary); padding: 40px; font-weight: 600; }
+        
+        .link-whats { color: inherit; text-decoration: none; transition: 0.3s; }
+        .link-whats:hover { color: #25D366; }
+
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Painel do Barbeiro ✂️</h1>
-    <button onclick="carregarAgendamentos()" style="background:#333; color:white; padding:12px; width:100%; border-radius:8px; border:1px solid #444; margin-bottom:20px; cursor:pointer; font-weight: bold;">🔄 ATUALIZAR LISTA</button>
+    <div class="header-painel">
+        <h1><i class="fa-solid fa-calendar-check" style="color: var(--primary);"></i> Painel do Barbeiro</h1>
+        <p>Gerencie seus agendamentos e score dos clientes</p>
+    </div>
+
+    <!-- Barra de Filtro e Atualização -->
+    <div class="controls">
+        <select id="filtro-data" onchange="renderizarLista()">
+            <option value="todos">Carregando datas...</option>
+        </select>
+        <button class="btn-atualizar" onclick="carregarAgendamentos()">
+            <i class="fa-solid fa-rotate-right"></i> Atualizar
+        </button>
+    </div>
     
     <div id="lista-pendentes">
-        <p class="loading">Conectando ao NocoDB...</p>
+        <div class="loading"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>Conectando ao banco de dados...</div>
     </div>
 </div>
 
@@ -36,9 +241,24 @@
     const URL_CADASTRO = "https://app.nocodb.com/api/v2/tables/measzir7yghqdl9/records";
     const URL_AGENDAMENTO = "https://app.nocodb.com/api/v2/tables/mvv28fo6ld6xnq9/records";
 
+    let agendamentosGlobais = [];
+    let clientesGlobais =[];
+
+    // Função que formata a data para ordenação (DD/MM/YYYY para YYYY-MM-DD)
+    function formatarParaSort(dataSTR) {
+        if(!dataSTR) return "9999-99-99";
+        let partes = dataSTR.split('/');
+        return `${partes[2]}-${partes[1]}-${partes[0]}`;
+    }
+
+    // Apenas os números para gerar link do WhatsApp
+    function limparWhats(numero) {
+        return numero.replace(/\D/g, '');
+    }
+
     async function carregarAgendamentos() {
         const div = document.getElementById('lista-pendentes');
-        div.innerHTML = "<p class='loading'>Buscando agendamentos...</p>";
+        div.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><br>Buscando agendamentos...</div>';
 
         try {
             const [resAgend, resClientes] = await Promise.all([
@@ -49,113 +269,190 @@
             const dataAgend = await resAgend.json();
             const dataCli = await resClientes.json();
 
-            // NocoDB coloca os dados em 'list'
-            const agendamentos = dataAgend.list.filter(a => a.status === "Pendente");
-            const clientes = dataCli.list;
+            // Pega apenas pendentes
+            let pendentes = dataAgend.list.filter(a => a.status === "Pendente");
 
-            if (!agendamentos || agendamentos.length === 0) {
-                div.innerHTML = "<p style='color: #888; text-align: center;'>Nenhum agendamento pendente.</p>";
-                return;
-            }
-
-            div.innerHTML = "";
-            agendamentos.forEach((item) => {
-                const dadosCliente = clientes.find(c => String(c.email).toLowerCase() === String(item.cliente_email).toLowerCase());
-                const nomeExibir = dadosCliente ? dadosCliente.nome : "Cliente não encontrado";
-                const whatsExibir = dadosCliente ? dadosCliente.whatsapp : "N/A";
-                const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo || 0).toFixed(2) : "0.00";
+            // ORDENAÇÃO: 1º por Data (Crescente), 2º por Hora (Crescente)
+            pendentes.sort((a, b) => {
+                let dataA = formatarParaSort(a.data_domingo);
+                let dataB = formatarParaSort(b.data_domingo);
                 
-                const pediuResgate = (String(item.usar_score).trim() === "Sim");
-
-                let botoesAcao = "";
-
-                if (pediuResgate) {
-                    botoesAcao = `
-                        <div class="resgate-badge">⚠️ CLIENTE SOLICITOU USAR SCORE (Saldo: R$ ${saldoAtual})</div>
-                        <button class="btn-resgate-sim" onclick="permitirResgate(${item.Id}, ${dadosCliente?.Id}, '${nomeExibir}')">
-                            ✅ PERMITIR (ZERAR SALDO E CONCLUIR)
-                        </button>
-                        <button class="btn-resgate-nao" onclick="confirmarPagamento(${item.Id}, ${dadosCliente?.Id}, ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
-                            ❌ NEGAR (COBRAR NORMAL)
-                        </button>
-                    `;
-                } else {
-                    botoesAcao = `
-                        <button class="btn-confirmar" onclick="confirmarPagamento(${item.Id}, ${dadosCliente?.Id}, ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
-                            CONFIRMAR PAGAMENTO E LIBERAR SCORE
-                        </button>
-                    `;
+                if (dataA !== dataB) {
+                    return dataA.localeCompare(dataB); // Ordena dias
                 }
-
-                div.innerHTML += `
-                    <div class="card-agendamento">
-                        <span class="status-badge">Pendente</span>
-                        <div class="cliente-nome">${nomeExibir}</div>
-                        <div class="info-linha">📱 WhatsApp: ${whatsExibir}</div>
-                        <div class="info-linha">💇‍♂️ Serviço: <strong>${item.servico}</strong></div>
-                        <div class="info-linha">💰 Valor: R$ ${parseFloat(item.valor_servico).toFixed(2)}</div>
-                        <div class="info-linha">📅 Data: ${item.data_domingo} às ${item.horario}</div>
-                        <div class="info-linha" style="color: #27ae60; font-weight: bold; margin-top: 10px;">
-                            ⭐ Score a liberar: R$ ${parseFloat(item.score_pendente).toFixed(2)}
-                        </div>
-                        ${botoesAcao}
-                        <button class="btn-excluir" onclick="cancelarAgendamento(${item.Id})">CANCELAR AGENDAMENTO</button>
-                    </div>
-                `;
+                // Se for mesmo dia, ordena por horário
+                let horaA = a.horario || "";
+                let horaB = b.horario || "";
+                return horaA.localeCompare(horaB);
             });
+
+            agendamentosGlobais = pendentes;
+            clientesGlobais = dataCli.list;
+
+            preencherFiltroDatas();
+            renderizarLista();
+
         } catch (e) {
             console.error(e);
-            div.innerHTML = "<p style='color: #ff4757; text-align: center;'>Erro ao conectar com o NocoDB. Verifique o Token e as URLs.</p>";
+            div.innerHTML = "<div class='loading' style='color: var(--danger);'><i class='fa-solid fa-triangle-exclamation fa-2x'></i><br><br>Erro ao conectar. Verifique sua conexão.</div>";
         }
+    }
+
+    function preencherFiltroDatas() {
+        const select = document.getElementById('filtro-data');
+        select.innerHTML = '<option value="todos">Exibir todos os dias</option>';
+        
+        let datasUnicas =[...new Set(agendamentosGlobais.map(a => a.data_domingo))];
+        
+        datasUnicas.forEach(data => {
+            if(data) {
+                let option = document.createElement('option');
+                option.value = data;
+                option.text = `Agendamentos do dia ${data}`;
+                select.appendChild(option);
+            }
+        });
+    }
+
+    function renderizarLista() {
+        const div = document.getElementById('lista-pendentes');
+        const filtroData = document.getElementById('filtro-data').value;
+        
+        let listaExibir = agendamentosGlobais;
+        
+        if(filtroData !== "todos") {
+            listaExibir = agendamentosGlobais.filter(a => a.data_domingo === filtroData);
+        }
+
+        if (listaExibir.length === 0) {
+            div.innerHTML = "<div class='loading' style='color: var(--text-muted);'><i class='fa-regular fa-calendar-xmark fa-2x'></i><br><br>Nenhum agendamento pendente para este filtro.</div>";
+            return;
+        }
+
+        div.innerHTML = "";
+        
+        listaExibir.forEach((item) => {
+            const dadosCliente = clientesGlobais.find(c => String(c.email).toLowerCase() === String(item.cliente_email).toLowerCase());
+            const nomeExibir = dadosCliente ? dadosCliente.nome : "Cliente não encontrado";
+            const whatsExibir = dadosCliente ? dadosCliente.whatsapp : "Não cadastrado";
+            const numeroLimpo = dadosCliente ? limparWhats(dadosCliente.whatsapp) : "";
+            const saldoAtual = dadosCliente ? parseFloat(dadosCliente.saldo || 0).toFixed(2) : "0.00";
+            
+            const pediuResgate = (String(item.usar_score).trim() === "Sim");
+            const horarioLimpo = item.horario.replace(' Hrs', '');
+
+            let linkWhatsApp = numeroLimpo.length > 10 ? `<a href="https://wa.me/55${numeroLimpo}" target="_blank" class="link-whats"><i class="fa-brands fa-whatsapp"></i> ${whatsExibir}</a>` : `<i class="fa-brands fa-whatsapp"></i> ${whatsExibir}`;
+
+            let botoesAcao = "";
+
+            if (pediuResgate) {
+                botoesAcao = `
+                    <div class="resgate-alerta">
+                        <h4><i class="fa-solid fa-bell"></i> SOLICITAÇÃO DE DESCONTO</h4>
+                        <p>O cliente quer usar o Score atual de <b>R$ ${saldoAtual.replace('.', ',')}</b>.</p>
+                    </div>
+                    <div class="acoes-grid" style="border-top: none; padding-top: 0;">
+                        <button class="btn-acao btn-resgate-sim" onclick="permitirResgate(${item.Id}, ${dadosCliente?.Id}, '${nomeExibir}')">
+                            <i class="fa-solid fa-check"></i> Autorizar Resgate e Concluir
+                        </button>
+                        <button class="btn-acao btn-resgate-nao" onclick="confirmarPagamento(${item.Id}, ${dadosCliente?.Id}, ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
+                            <i class="fa-solid fa-xmark"></i> Negar Desconto (Cobrar Normal)
+                        </button>
+                    </div>
+                `;
+            } else {
+                botoesAcao = `
+                    <div class="acoes-grid">
+                        <button class="btn-acao btn-confirmar" onclick="confirmarPagamento(${item.Id}, ${dadosCliente?.Id}, ${item.score_pendente}, ${dadosCliente?.saldo || 0}, '${nomeExibir}')">
+                            <i class="fa-solid fa-hand-holding-dollar"></i> Confirmar Pagamento e Gerar Score
+                        </button>
+                    </div>
+                `;
+            }
+
+            div.innerHTML += `
+                <div class="card-agendamento">
+                    <div class="card-header">
+                        <div class="data-hora"><i class="fa-regular fa-clock"></i> ${item.data_domingo} às ${horarioLimpo}</div>
+                        <span class="status-badge">Pendente</span>
+                    </div>
+                    
+                    <div class="cliente-nome">${nomeExibir}</div>
+                    
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <i class="fa-solid fa-scissors"></i> Serviço:
+                            <strong>${item.servico}</strong>
+                        </div>
+                        <div class="info-item">
+                            <i class="fa-solid fa-tags"></i> Valor Cobrado:
+                            <strong>R$ ${parseFloat(item.valor_servico).toFixed(2).replace('.', ',')}</strong>
+                        </div>
+                        <div class="info-item" style="grid-column: span 2;">
+                            <i class="fa-solid fa-phone"></i> Contato:
+                            <strong>${linkWhatsApp}</strong>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(197, 160, 89, 0.1); padding: 8px 12px; border-radius: 6px; font-size: 12px; color: var(--primary); font-weight: 600; display: inline-block;">
+                        <i class="fa-solid fa-coins"></i> Score desta visita: R$ ${parseFloat(item.score_pendente).toFixed(2).replace('.', ',')}
+                    </div>
+
+                    ${botoesAcao}
+                    
+                    <div class="acoes-grid" style="margin-top: 10px; padding-top: 10px;">
+                        <button class="btn-acao btn-excluir" onclick="cancelarAgendamento(${item.Id})">
+                            <i class="fa-regular fa-trash-can"></i> Cancelar Agendamento
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
     }
 
     async function permitirResgate(idAgend, idCli, nome) {
         if (!idCli) return alert("Cliente não encontrado no banco.");
-        if (!confirm(`Autorizar resgate de ${nome}? O saldo será ZERADO.`)) return;
+        if (!confirm(`Tem certeza que deseja autorizar o resgate para ${nome}? O saldo dele voltará a R$ 0,00.`)) return;
         
         try {
-            // Zera saldo
             await fetch(URL_CADASTRO, {
                 method: 'PATCH',
                 headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
                 body: JSON.stringify({ Id: idCli, saldo: 0 })
             });
-            // Conclui agendamento
             await fetch(URL_AGENDAMENTO, {
                 method: 'PATCH',
                 headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
                 body: JSON.stringify({ Id: idAgend, status: "Concluido" })
             });
-            alert("Sucesso! Saldo zerado e corte concluído.");
+            alert("Sucesso! Corte finalizado com uso do Score.");
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao processar."); }
+        } catch (e) { alert("Erro ao processar a ação."); }
     }
 
-    async function confirmarPagamento(idAgend, idCli, score, saldoA, nome) {
+    async function confirmarPagamento(idAgend, idCli, score, saldoAtual, nome) {
         if (!idCli) return alert("Cliente não encontrado.");
-        if (!confirm(`Confirmar pagamento de ${nome}?`)) return;
+        if (!confirm(`Confirmar o atendimento normal de ${nome}?\nIsso vai gerar um bônus de R$ ${score.toFixed(2).replace('.',',')} no score dele.`)) return;
 
         try {
-            const novoSaldo = (parseFloat(saldoA) + parseFloat(score)).toFixed(2);
-            // Atualiza saldo
+            const novoSaldo = (parseFloat(saldoAtual) + parseFloat(score)).toFixed(2);
             await fetch(URL_CADASTRO, {
                 method: 'PATCH',
                 headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
                 body: JSON.stringify({ Id: idCli, saldo: novoSaldo })
             });
-            // Conclui agendamento
             await fetch(URL_AGENDAMENTO, {
                 method: 'PATCH',
                 headers: { "xc-token": TOKEN, "Content-Type": "application/json" },
                 body: JSON.stringify({ Id: idAgend, status: "Concluido" })
             });
-            alert("Sucesso! Score adicionado.");
+            alert("Sucesso! Atendimento concluído e Score depositado.");
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao processar."); }
+        } catch (e) { alert("Erro ao processar a ação."); }
     }
 
     async function cancelarAgendamento(idAgend) {
-        if (!confirm("Excluir este agendamento?")) return;
+        if (!confirm("Tem certeza que deseja cancelar e apagar este agendamento? Esta ação não pode ser desfeita.")) return;
         try {
             await fetch(URL_AGENDAMENTO, {
                 method: 'DELETE',
@@ -163,9 +460,10 @@
                 body: JSON.stringify({ Id: idAgend })
             });
             carregarAgendamentos();
-        } catch (e) { alert("Erro ao excluir."); }
+        } catch (e) { alert("Erro ao excluir agendamento."); }
     }
 
+    // Carrega automaticamente ao abrir a página
     carregarAgendamentos();
 </script>
 </body>
