@@ -3,179 +3,347 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barbearia Score - Premium</title>
+    <title>Barbearia Premium - Clube Score</title>
+    <!-- Adicionando FontAwesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         :root {
-            --primary: #b08d57;
-            --bg-body: #f0f2f5;
+            --primary: #c5a059; /* Dourado mais elegante */
+            --primary-hover: #b38f4d;
+            --bg-body: #f4f6f9;
             --bg-card: #ffffff;
-            --input-bg: #f8faf9;
-            --text-main: #333;
-            --danger-bg: #ffe5e5;
-            --danger-text: #d63031;
-            --success-btn: #27ae60;
+            --input-bg: #f9fafb;
+            --text-main: #2c3e50;
+            --text-muted: #7f8c8d;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --card-vip: linear-gradient(135deg, #2b2b2b 0%, #1a1a1a 100%);
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body { 
             font-family: 'Poppins', sans-serif; 
             background-color: var(--bg-body); 
             color: var(--text-main); 
-            margin: 0; 
+            display: flex; 
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
             padding: 20px;
-            display: flex; justify-content: center;
         }
 
         .box { 
             background: var(--bg-card); 
-            padding: 35px 25px; 
-            border-radius: 20px; 
-            max-width: 400px; width: 100%;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            padding: 40px 30px; 
+            border-radius: 24px; 
+            max-width: 420px; 
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            position: relative;
+            overflow: hidden;
         }
 
-        h2 { font-weight: 700; margin-bottom: 20px; color: #222; text-align: center; }
+        h2 { 
+            font-weight: 700; 
+            margin-bottom: 25px; 
+            color: #111; 
+            text-align: center; 
+            font-size: 24px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            transition: 0.3s;
+        }
 
         input, select { 
             width: 100%; 
-            padding: 14px; 
-            margin: 10px 0; 
-            border-radius: 12px; 
-            border: 2px solid #e1e8e7; 
+            padding: 16px 16px 16px 45px; /* Espaço para o ícone */
+            border-radius: 14px; 
+            border: 2px solid #eaeff5; 
             background-color: var(--input-bg);
-            color: #444;
-            font-size: 15px;
-            transition: 0.3s;
+            color: var(--text-main);
+            font-size: 14px;
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s ease;
             outline: none;
-            display: block;
-            box-sizing: border-box;
+            appearance: none; /* Remove seta padrão do select */
         }
 
-        input:focus, select:focus { border-color: var(--primary); background-color: #fff; }
+        select { padding-left: 16px; cursor: pointer; } /* Select não tem ícone na esquerda no design novo */
+        
+        input:focus, select:focus { 
+            border-color: var(--primary); 
+            background-color: #fff; 
+            box-shadow: 0 0 0 4px rgba(197, 160, 89, 0.1);
+        }
+
+        .input-group input:focus + i { color: var(--primary); }
+
+        label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-left: 5px;
+            margin-bottom: 5px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
         button { 
-            width: 100%; padding: 16px; 
+            width: 100%; 
+            padding: 16px; 
             background: var(--primary); 
-            color: white; border: none; 
-            border-radius: 12px; font-weight: 700; 
-            cursor: pointer; text-transform: uppercase;
-            margin-top: 15px;
+            color: white; 
+            border: none; 
+            border-radius: 14px; 
+            font-weight: 600; 
+            font-size: 15px;
+            cursor: pointer; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(197, 160, 89, 0.3);
+            display: flex; justify-content: center; align-items: center; gap: 10px;
         }
 
+        button:hover { 
+            background: var(--primary-hover); 
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(197, 160, 89, 0.4);
+        }
+
+        button:active { transform: translateY(0); }
+
+        /* Cartão VIP (Score) */
         .score-card { 
-            background: #1a1a1a; 
-            padding: 25px; border-radius: 18px; 
-            margin-bottom: 20px; color: var(--primary);
+            background: var(--card-vip); 
+            padding: 30px 25px; 
+            border-radius: 20px; 
+            margin-bottom: 25px; 
+            color: #fff;
             text-align: center;
-            transition: 0.4s ease;
-            border: 2px solid transparent;
+            transition: all 0.4s ease;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Efeito de brilho no cartão */
+        .score-card::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(197,160,89,0.1) 0%, rgba(0,0,0,0) 70%);
+            transform: rotate(30deg); pointer-events: none;
         }
 
         .score-card.active-resgate {
-            background: #002d15;
-            border-color: var(--success-btn);
+            background: linear-gradient(135deg, #0f3d24 0%, #062112 100%);
+            border-color: var(--success);
         }
         
-        .score-card h1 { margin: 5px 0; font-size: 40px; color: #fff; }
-        .score-card p#nome-display { color: var(--primary); font-weight: 600; margin-top: 5px; font-size: 15px; }
+        .score-card p.subtitle { color: #aaa; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .score-card h1 { margin: 0; font-size: 42px; font-weight: 700; color: var(--primary); letter-spacing: -1px; }
+        .score-card p#nome-display { color: #ddd; font-weight: 400; margin-top: 15px; font-size: 14px; }
 
         .btn-usar-saldo {
-            background: rgba(176, 141, 87, 0.2);
+            background: rgba(197, 160, 89, 0.15);
             color: var(--primary);
             border: 1px solid var(--primary);
-            padding: 8px 15px;
-            border-radius: 10px;
-            font-size: 11px;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 12px;
             cursor: pointer;
             text-transform: uppercase;
-            font-weight: 700;
-            margin-top: 10px;
+            font-weight: 600;
+            margin-top: 15px;
             display: inline-block;
-            transition: 0.3s;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
         }
 
-        .btn-usar-saldo.cancelar { background: #c0392b; color: white; border-color: #c0392b; }
+        .btn-usar-saldo:hover { background: var(--primary); color: #fff; }
+        .btn-usar-saldo.cancelar { background: rgba(231, 76, 60, 0.1); color: var(--danger); border-color: var(--danger); }
+        .btn-usar-saldo.cancelar:hover { background: var(--danger); color: #fff; }
 
         .hidden { display: none !important; }
 
-        .nota-fiscal { 
-            background: #fff; padding: 25px; 
-            border: 2px solid #f0f0f0; border-radius: 15px;
-            text-align: left; margin-top: 20px;
+        /* Animação de entrada nas telas */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
         }
+
+        /* Comprovante / Ticket */
+        .nota-fiscal { 
+            background: #fff; 
+            padding: 30px 25px; 
+            border: 2px dashed #dcdde1; 
+            border-radius: 16px;
+            text-align: left; 
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .nota-fiscal::before, .nota-fiscal::after {
+            content: ''; position: absolute; top: -10px; width: 20px; height: 20px;
+            background: var(--bg-card); border-radius: 50%;
+        }
+        .nota-fiscal::before { left: -10px; border-right: 2px dashed #dcdde1; }
+        .nota-fiscal::after { right: -10px; border-left: 2px dashed #dcdde1; }
+
+        .nota-fiscal h3 { text-align: center; color: var(--success); margin-top: 0; margin-bottom: 20px; font-size: 18px; }
+        
+        .ticket-row { display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0; padding: 12px 0; font-size: 14px; }
+        .ticket-row span:first-child { color: var(--text-muted); font-weight: 500; }
+        .ticket-row span:last-child { color: var(--text-main); font-weight: 600; text-align: right; }
+
+        .link-text { cursor: pointer; color: var(--text-muted); font-size: 14px; text-align: center; margin-top: 20px; transition: 0.3s; font-weight: 500; }
+        .link-text:hover { color: var(--primary); }
+
+        .btn-logout {
+            background: transparent; color: var(--danger); border: 2px solid rgba(231, 76, 60, 0.2); box-shadow: none;
+        }
+        .btn-logout:hover { background: var(--danger); color: #fff; box-shadow: 0 8px 20px rgba(231, 76, 60, 0.2); }
+
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <div class="box">
-    <div id="tela-login">
-        <h2>Acessar Conta</h2>
-        <input type="email" id="login-email" placeholder="Seu e-mail">
-        <input type="password" id="login-senha" placeholder="Sua senha">
-        <button onclick="logar()">Entrar</button>
-        <p onclick="irParaCadastro()" style="cursor:pointer; color:#888; font-size:14px; text-align:center; margin-top:15px;">Ainda não tenho conta</p>
+    <!-- TELA DE LOGIN -->
+    <div id="tela-login" class="fade-in">
+        <h2><i class="fa-solid fa-scissors" style="color: var(--primary); margin-right: 10px;"></i>Bem-vindo!</h2>
+        
+        <div class="input-group">
+            <input type="email" id="login-email" placeholder="Seu e-mail">
+            <i class="fa-regular fa-envelope"></i>
+        </div>
+        
+        <div class="input-group">
+            <input type="password" id="login-senha" placeholder="Sua senha">
+            <i class="fa-solid fa-lock"></i>
+        </div>
+
+        <button onclick="logar()">Entrar <i class="fa-solid fa-arrow-right"></i></button>
+        <p class="link-text" onclick="irParaCadastro()">Não tem uma conta? <b>Crie agora</b></p>
     </div>
 
-    <div id="tela-cadastro" class="hidden">
-        <h2>Cadastro</h2>
-        <input type="text" id="cad-nome" placeholder="Nome completo">
-        <input type="email" id="cad-email" placeholder="E-mail">
-        <input type="password" id="cad-senha" placeholder="Crie uma senha">
-        <input type="tel" id="cad-whatsapp" placeholder="(xx) xxxxx-xxxx" maxlength="15">
-        <button onclick="finalizarCadastro()">Criar Conta</button>
-        <p onclick="irParaLogin()" style="cursor:pointer; color:#888; font-size:14px; text-align:center; margin-top:10px;">Voltar ao login</p>
+    <!-- TELA DE CADASTRO -->
+    <div id="tela-cadastro" class="hidden fade-in">
+        <h2>Criar Conta</h2>
+        
+        <div class="input-group">
+            <input type="text" id="cad-nome" placeholder="Nome completo">
+            <i class="fa-regular fa-user"></i>
+        </div>
+        
+        <div class="input-group">
+            <input type="email" id="cad-email" placeholder="E-mail">
+            <i class="fa-regular fa-envelope"></i>
+        </div>
+        
+        <div class="input-group">
+            <input type="password" id="cad-senha" placeholder="Crie uma senha">
+            <i class="fa-solid fa-lock"></i>
+        </div>
+
+        <div class="input-group">
+            <input type="tel" id="cad-whatsapp" placeholder="(XX) XXXXX-XXXX" maxlength="15">
+            <i class="fa-brands fa-whatsapp"></i>
+        </div>
+
+        <button onclick="finalizarCadastro()">Finalizar Cadastro</button>
+        <p class="link-text" onclick="irParaLogin()"><i class="fa-solid fa-arrow-left"></i> Voltar ao login</p>
     </div>
 
-    <div id="tela-painel" class="hidden">
+    <!-- TELA PAINEL / AGENDAMENTO -->
+    <div id="tela-painel" class="hidden fade-in">
+        
+        <!-- Cartão Score -->
         <div class="score-card" id="card-saldo">
-            <p style="color:#eee; font-size:12px; text-transform:uppercase; margin:0;">Saldo Disponível</p>
+            <p class="subtitle">Saldo Clube Score</p>
             <h1 id="saldo-texto">R$ 0,00</h1>
-            <div id="btn-resgate" class="btn-usar-saldo" onclick="toggleResgate()">USAR SCORE</div>
+            <div id="btn-resgate" class="btn-usar-saldo" onclick="toggleResgate()"><i class="fa-solid fa-gift"></i> USAR NO AGENDAMENTO</div>
             <p id="nome-display"></p>
         </div>
 
         <div id="area-agendamento">
-            <label style="font-size: 11px; color: #999; margin-left: 5px;">Data disponível:</label>
-            <select id="select-domingo" onchange="bloquearHorariosOcupados()"></select>
+            <div style="margin-bottom: 15px;">
+                <label>Data Disponível</label>
+                <select id="select-domingo" onchange="bloquearHorariosOcupados()"></select>
+            </div>
 
-            <label style="font-size: 11px; color: #999; margin-left: 5px;">O que faremos?</label>
-            <select id="select-servico">
-                <option value="">Escolha o serviço</option>
-                <option value="Social|20|0.05">Social - R$ 20,00 (+5¢)</option>
-                <option value="Degradê|25|0.07">Degradê - R$ 25,00 (+7¢)</option>
-                <option value="Social + Barba|30|0.10">Social + Barba - R$ 30,00 (+10¢)</option>
-                <option value="Combo Completo|35|0.13">Combo Completo - R$ 35,00 (+13¢)</option>
-                <option value="Degradê + Barba|35|0.13">Degradê + Barba - R$ 35,00 (+13¢)</option>
-                <option value="Barba|10|0.02">Barba - R$ 10,00 (+2¢)</option>
-                <option value="Sobrancelha|10|0.02">Sobrancelha - R$ 10,00 (+2¢)</option>
-                <option value="Pezinho|10|0.02">Pezinho - R$ 10,00 (+2¢)</option>
-                <option value="Luzes|60|0.30">Luzes - R$ 60,00 (+30¢)</option>
-                <option value="Tintura|30|0.10">Tintura - R$ 30,00 (+10¢)</option>
-            </select>
+            <div style="margin-bottom: 15px;">
+                <label>Qual serviço deseja realizar?</label>
+                <select id="select-servico">
+                    <option value="">Selecione...</option>
+                    <option value="Social|20|0.05">Social - R$ 20,00 (+5¢ score)</option>
+                    <option value="Degradê|25|0.07">Degradê - R$ 25,00 (+7¢ score)</option>
+                    <option value="Social + Barba|30|0.10">Social + Barba - R$ 30,00 (+10¢ score)</option>
+                    <option value="Combo Completo|35|0.13">Combo Completo - R$ 35,00 (+13¢ score)</option>
+                    <option value="Degradê + Barba|35|0.13">Degradê + Barba - R$ 35,00 (+13¢ score)</option>
+                    <option value="Barba|10|0.02">Barba - R$ 10,00 (+2¢ score)</option>
+                    <option value="Sobrancelha|10|0.02">Sobrancelha - R$ 10,00 (+2¢ score)</option>
+                    <option value="Pezinho|10|0.02">Pezinho - R$ 10,00 (+2¢ score)</option>
+                    <option value="Luzes|60|0.30">Luzes - R$ 60,00 (+30¢ score)</option>
+                    <option value="Tintura|30|0.10">Tintura - R$ 30,00 (+10¢ score)</option>
+                </select>
+            </div>
 
-            <label style="font-size: 11px; color: #999; margin-left: 5px;">Horário preferencial:</label>
-            <select id="select-horario">
-                <option value="">Escolha o horário</option>
-                <option value="10:00 Hrs">10:00 Hrs</option>
-                <option value="11:20 Hrs">11:20 Hrs</option>
-                <option value="12:35 Hrs">12:35 Hrs</option>
-                <option value="15:00 Hrs">15:00 Hrs</option>
-                <option value="16:30 Hrs">16:30 Hrs</option>
-                <option value="17:50 Hrs">17:50 Hrs</option>
-            </select>
+            <div style="margin-bottom: 20px;">
+                <label>Horário Preferencial</label>
+                <select id="select-horario">
+                    <option value="">Selecione...</option>
+                    <option value="10:00 Hrs">10:00</option>
+                    <option value="11:20 Hrs">11:20</option>
+                    <option value="12:35 Hrs">12:35</option>
+                    <option value="15:00 Hrs">15:00</option>
+                    <option value="16:30 Hrs">16:30</option>
+                    <option value="17:50 Hrs">17:50</option>
+                </select>
+            </div>
 
-            <button onclick="agendarServico()" id="btn-agendar">Finalizar Agendamento</button>
+            <button onclick="agendarServico()" id="btn-agendar"><i class="fa-solid fa-calendar-check"></i> Confirmar Agendamento</button>
         </div>
 
-        <div id="nota-fiscal" class="hidden nota-fiscal">
-            <h3 style="text-align:center; color:var(--primary); margin-top:0;">AGENDADO!</h3>
-            <div id="aviso-resgate" style="background:#eafaf1; color: var(--success-btn); padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; text-align: center; display:none; margin-bottom: 15px;">✅ SCORE SOLICITADO</div>
-            <p><strong>DATA:</strong> <span id="nota-data"></span></p>
-            <p><strong>HORA:</strong> <span id="nota-hora"></span></p>
-            <p><strong>SERVIÇO:</strong> <span id="nota-serv"></span></p>
-            <p><strong>VALOR:</strong> R$ <span id="nota-valor"></span></p>
+        <!-- Comprovante -->
+        <div id="nota-fiscal" class="hidden nota-fiscal fade-in">
+            <h3><i class="fa-solid fa-circle-check"></i> Agendamento Confirmado</h3>
+            
+            <div id="aviso-resgate" style="background:#eafaf1; color: var(--success); padding: 10px; border-radius: 8px; font-weight: 600; font-size: 12px; text-align: center; display:none; margin-bottom: 15px;">
+                <i class="fa-solid fa-tag"></i> Desconto Score Solicitado!
+            </div>
+            
+            <div class="ticket-row">
+                <span>Data</span> <span id="nota-data"></span>
+            </div>
+            <div class="ticket-row">
+                <span>Horário</span> <span id="nota-hora"></span>
+            </div>
+            <div class="ticket-row">
+                <span>Serviço</span> <span id="nota-serv"></span>
+            </div>
+            <div class="ticket-row" style="border-bottom: none; font-size: 16px; margin-top: 10px;">
+                <span>Valor a pagar</span> <span style="color: var(--primary);">R$ <span id="nota-valor"></span></span>
+            </div>
         </div>
-        <button onclick="location.reload()" style="background:none; color:#aaa; font-size:12px; border:1px solid #ddd; margin-top: 20px;">Sair da conta</button>
+        
+        <button class="btn-logout" onclick="location.reload()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair da conta</button>
     </div>
 </div>
 
@@ -205,24 +373,36 @@
     async function logar() {
         const email = document.getElementById('login-email').value.trim().toLowerCase();
         const senha = document.getElementById('login-senha').value;
+        const btn = document.querySelector('#tela-login button');
+        
+        if(!email || !senha) return alert("Preencha email e senha.");
+
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Carregando...';
 
         try {
             const res = await fetch(`${URL_CADASTRO}?limit=100`, { headers: { "xc-token": TOKEN } });
             const data = await res.json();
-            // NocoDB retorna os dados em 'list'
             const user = data.list.find(u => String(u.email).toLowerCase() === email && String(u.senha) === senha);
             
             if (user) {
                 USUARIO_LOGADO = user;
                 SALDO_ATUAL = parseFloat(user.saldo) || 0;
-                document.getElementById('nome-display').innerText = "Cliente: " + user.nome;
+                document.getElementById('nome-display').innerText = user.nome.toUpperCase();
                 document.getElementById('saldo-texto').innerText = "R$ " + SALDO_ATUAL.toFixed(2).replace('.', ',');
+                
                 document.getElementById('tela-login').classList.add('hidden');
                 document.getElementById('tela-painel').classList.remove('hidden');
+                
                 carregarDomingos();
                 verificarAgendamentoAtivo(email);
-            } else { alert("E-mail ou senha incorretos!"); }
-        } catch (e) { alert("Erro ao conectar ao NocoDB."); }
+            } else { 
+                alert("E-mail ou senha incorretos!"); 
+                btn.innerHTML = 'Entrar <i class="fa-solid fa-arrow-right"></i>';
+            }
+        } catch (e) { 
+            alert("Erro ao conectar ao servidor. Tente novamente."); 
+            btn.innerHTML = 'Entrar <i class="fa-solid fa-arrow-right"></i>';
+        }
     }
 
     async function bloquearHorariosOcupados() {
@@ -230,11 +410,12 @@
         const selectHora = document.getElementById('select-horario');
         if(!dataEscolhida) return;
 
-        // Resetar horários
         for(let i = 0; i < selectHora.options.length; i++) {
             let opt = selectHora.options[i];
             if(opt.value === "") continue;
-            opt.disabled = false; opt.text = opt.value; opt.style.color = "";
+            opt.disabled = false; 
+            opt.text = opt.value.replace(' Hrs', ''); 
+            opt.style.color = "";
         }
 
         try {
@@ -246,8 +427,8 @@
                 for(let i = 0; i < selectHora.options.length; i++) {
                     if(selectHora.options[i].value === ag.horario) {
                         selectHora.options[i].disabled = true;
-                        selectHora.options[i].text = ag.horario + " (OCUPADO)";
-                        selectHora.options[i].style.color = "red";
+                        selectHora.options[i].text = ag.horario.replace(' Hrs', '') + " (Ocupado)";
+                        selectHora.options[i].style.color = "#e74c3c";
                     }
                 }
             });
@@ -255,18 +436,18 @@
     }
 
     function toggleResgate() {
-        if (SALDO_ATUAL < 1.00) { alert("Mínimo de R$ 1,00 para resgate."); return; }
+        if (SALDO_ATUAL < 1.00) { alert("Você precisa ter no mínimo R$ 1,00 para usar o saldo."); return; }
         const card = document.getElementById('card-saldo');
         const btn = document.getElementById('btn-resgate');
         if (QUER_USAR_SCORE === "Não") {
             QUER_USAR_SCORE = "Sim";
             card.classList.add('active-resgate');
-            btn.innerText = "CANCELAR USO";
+            btn.innerHTML = '<i class="fa-solid fa-xmark"></i> CANCELAR USO';
             btn.classList.add('cancelar');
         } else {
             QUER_USAR_SCORE = "Não";
             card.classList.remove('active-resgate');
-            btn.innerText = "USAR SCORE";
+            btn.innerHTML = '<i class="fa-solid fa-gift"></i> USAR NO AGENDAMENTO';
             btn.classList.remove('cancelar');
         }
     }
@@ -275,9 +456,13 @@
         const serv = document.getElementById('select-servico').value;
         const hora = document.getElementById('select-horario').value;
         const dataD = document.getElementById('select-domingo').value;
-        if(!serv || !hora || !dataD) return alert("Preencha todos os campos.");
+        if(!serv || !hora || !dataD) return alert("Por favor, preencha todos os campos do agendamento.");
 
-        const [nomeS, valorS, scoreS] = serv.split('|');
+        const btn = document.getElementById('btn-agendar');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Agendando...';
+        btn.disabled = true;
+
+        const[nomeS, valorS, scoreS] = serv.split('|');
 
         const body = {
             cliente_email: USUARIO_LOGADO.email,
@@ -297,10 +482,13 @@
                 body: JSON.stringify(body)
             });
             if(res.ok) {
-                alert("Agendamento realizado!");
                 location.reload();
             }
-        } catch (e) { alert("Erro ao agendar."); }
+        } catch (e) { 
+            alert("Erro ao agendar. Tente novamente.");
+            btn.innerHTML = '<i class="fa-solid fa-calendar-check"></i> Confirmar Agendamento';
+            btn.disabled = false;
+        }
     }
 
     function carregarDomingos() {
@@ -327,13 +515,16 @@
             const res = await fetch(`${URL_AGENDAMENTO}?limit=100`, { headers: { "xc-token": TOKEN } });
             const data = await res.json();
             const ativo = data.list.find(ag => String(ag.cliente_email).toLowerCase() === email.toLowerCase() && ag.status === "Pendente");
+            
             if(ativo) {
                 document.getElementById('area-agendamento').classList.add('hidden');
                 document.getElementById('nota-fiscal').classList.remove('hidden');
+                
                 document.getElementById('nota-data').innerText = ativo.data_domingo;
                 document.getElementById('nota-hora').innerText = ativo.horario;
                 document.getElementById('nota-serv').innerText = ativo.servico;
-                document.getElementById('nota-valor').innerText = ativo.valor_servico;
+                document.getElementById('nota-valor').innerText = parseFloat(ativo.valor_servico).toFixed(2).replace('.', ',');
+                
                 if(ativo.usar_score === "Sim") document.getElementById('aviso-resgate').style.display = "block";
             }
         } catch(e) {}
@@ -344,7 +535,12 @@
         const email = document.getElementById('cad-email').value.trim().toLowerCase();
         const senha = document.getElementById('cad-senha').value;
         const whatsapp = document.getElementById('cad-whatsapp').value;
-        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Preencha tudo corretamente!");
+        
+        if(!nome || !email || !senha || whatsapp.length < 14) return alert("Por favor, preencha todos os campos corretamente.");
+
+        const btn = document.querySelector('#tela-cadastro button');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando conta...';
+        btn.disabled = true;
 
         const body = { nome, email, senha, whatsapp, saldo: 0 };
 
@@ -355,14 +551,28 @@
                 body: JSON.stringify(body)
             });
             if(res.ok) {
-                alert("Cadastro realizado!"); 
+                alert("Conta criada com sucesso! Faça login para continuar."); 
                 irParaLogin();
             }
-        } catch (e) { alert("Erro ao cadastrar."); }
+        } catch (e) { 
+            alert("Erro ao criar conta."); 
+            btn.innerHTML = 'Finalizar Cadastro';
+            btn.disabled = false;
+        }
     }
 
-    function irParaCadastro() { document.getElementById('tela-login').classList.add('hidden'); document.getElementById('tela-cadastro').classList.remove('hidden'); }
-    function irParaLogin() { document.getElementById('tela-cadastro').classList.add('hidden'); document.getElementById('tela-login').classList.remove('hidden'); }
+    function irParaCadastro() { 
+        document.getElementById('tela-login').classList.add('hidden'); 
+        document.getElementById('tela-cadastro').classList.remove('hidden'); 
+    }
+    
+    function irParaLogin() { 
+        document.getElementById('tela-cadastro').classList.add('hidden'); 
+        document.getElementById('tela-login').classList.remove('hidden'); 
+        // Reseta o botão caso venha de um erro
+        document.querySelector('#tela-cadastro button').innerHTML = 'Finalizar Cadastro';
+        document.querySelector('#tela-cadastro button').disabled = false;
+    }
 </script>
 </body>
 </html>
